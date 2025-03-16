@@ -1,6 +1,6 @@
 # YourPicker
 
-YourPicker is a Rainmeter plugin that provides a custom color picker with a modern, VSCode-like interface. It features a high-resolution color wheel, brightness and opacity sliders, a desktop color picker, and supports continuous updates of the selected color in either RGB or Hex format. The plugin also supports executing a finish action (such as logging) when the color selection is complete.
+YourPicker is a Rainmeter plugin that provides a custom color picker with a modern interface. It features a high-resolution color wheel, brightness and opacity sliders, a desktop color picker, and supports continuous updates of the selected color in either RGB or Hex format. The plugin also supports executing a finish action (such as logging) when the color selection is complete.
 
 ---
 
