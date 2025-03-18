@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using Rainmeter;
@@ -10,7 +11,7 @@ namespace YourPicker
     public class ColorWheelControl : Control
     {
         private Bitmap colorWheel;
-        private int wheelSize = 300; // Smoother wheel.
+        private int wheelSize = 200; // Reduced from 300.
         private bool isDragging = false;
 
         // Selected hue and saturation.
@@ -121,8 +122,9 @@ namespace YourPicker
             base.OnPaint(e);
             if (colorWheel != null)
                 e.Graphics.DrawImage(colorWheel, 0, 0);
-            using (Pen pen = new Pen(Color.Black, 2))
-                e.Graphics.DrawEllipse(pen, 0, 0, wheelSize - 1, wheelSize - 1);
+            // Draw a bold border around the color wheel.
+            using (Pen borderPen = new Pen(Color.Black, 4))
+                e.Graphics.DrawEllipse(borderPen, 0, 0, wheelSize - 1, wheelSize - 1);
 
             int radius = wheelSize / 2;
             int indicatorSize = 10;
@@ -133,9 +135,10 @@ namespace YourPicker
             {
                 e.Graphics.FillEllipse(brush, indicatorRect);
             }
-            using (Pen pen = new Pen(Color.White, 2))
+            // Draw a white border around the indicator.
+            using (Pen indicatorPen = new Pen(Color.White, 2))
             {
-                e.Graphics.DrawEllipse(pen, indicatorRect);
+                e.Graphics.DrawEllipse(indicatorPen, indicatorRect);
             }
         }
 
@@ -161,10 +164,92 @@ namespace YourPicker
         }
     }
 
-    // DESKTOP COLOR PICKER FORM (DPI-Aware)
+    // CIRCULAR MAGNIFIER FORM: shows a zoomed circular preview around the mouse pointer.
+    public class MagnifierForm : Form
+    {
+        private Timer timer;
+        // Increased values: CaptureSize from 20 to 40, ZoomFactor from 2 to 4.
+        public int ZoomFactor { get; set; } = 4;
+        public int CaptureSize { get; set; } = 40;
+        private Bitmap magnifiedImage;
+
+        public MagnifierForm()
+        {
+            // Enable double buffering.
+            this.DoubleBuffered = true;
+            this.SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer, true);
+
+            this.FormBorderStyle = FormBorderStyle.None;
+            this.Size = new Size(CaptureSize * ZoomFactor, CaptureSize * ZoomFactor);
+
+            // Create a circular region for a round magnifier.
+            GraphicsPath gp = new GraphicsPath();
+            gp.AddEllipse(new Rectangle(0, 0, this.Width, this.Height));
+            this.Region = new Region(gp);
+
+            this.StartPosition = FormStartPosition.Manual;
+            this.TopMost = true;
+            this.ShowInTaskbar = false;
+            this.Opacity = 0.9;
+
+            timer = new Timer();
+            timer.Interval = 100; // Update every 100 ms to reduce flickering.
+            timer.Tick += Timer_Tick;
+            timer.Start();
+        }
+
+        private void Timer_Tick(object sender, EventArgs e)
+        {
+            // Get current mouse position.
+            Point pos = Cursor.Position;
+            // Position the magnifier slightly offset from the pointer.
+            this.Location = new Point(pos.X + 20, pos.Y + 20);
+            // Capture a small area around the mouse pointer.
+            using (Bitmap bmp = new Bitmap(CaptureSize, CaptureSize))
+            {
+                using (Graphics g = Graphics.FromImage(bmp))
+                {
+                    g.CopyFromScreen(pos.X - CaptureSize / 2, pos.Y - CaptureSize / 2, 0, 0, new Size(CaptureSize, CaptureSize));
+                }
+                if (magnifiedImage != null)
+                    magnifiedImage.Dispose();
+                magnifiedImage = new Bitmap(bmp, new Size(CaptureSize * ZoomFactor, CaptureSize * ZoomFactor));
+            }
+            Invalidate();
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            base.OnPaint(e);
+            if (magnifiedImage != null)
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                e.Graphics.DrawImage(magnifiedImage, 0, 0, this.Width, this.Height);
+                // Draw a cross in the center of the magnifier.
+                int centerX = this.Width / 2;
+                int centerY = this.Height / 2;
+                using (Pen crossPen = new Pen(Color.White, 2))
+                {
+                    e.Graphics.DrawLine(crossPen, 0, centerY, this.Width, centerY);
+                    e.Graphics.DrawLine(crossPen, centerX, 0, centerX, this.Height);
+                }
+            }
+        }
+
+        protected override void OnFormClosing(FormClosingEventArgs e)
+        {
+            timer.Stop();
+            if (magnifiedImage != null)
+                magnifiedImage.Dispose();
+            base.OnFormClosing(e);
+        }
+    }
+
+    // DESKTOP COLOR PICKER FORM (DPI-Aware) with Circular Magnifier.
     public class DesktopColorPickerForm : Form
     {
         public Color PickedColor { get; private set; }
+        private MagnifierForm magnifier; // For the magnified preview.
 
         [DllImport("user32.dll")]
         private static extern IntPtr GetDC(IntPtr hWnd);
@@ -183,17 +268,22 @@ namespace YourPicker
             this.FormBorderStyle = FormBorderStyle.None;
             this.WindowState = FormWindowState.Maximized;
             this.TopMost = true;
-            this.Cursor = Cursors.Cross;
+            // Remove the crosshair; default cursor is used.
             this.Opacity = 0.01; // Nearly invisible.
             this.ShowInTaskbar = false;
             this.KeyDown += DesktopColorPickerForm_KeyDown;
             this.MouseDown += DesktopColorPickerForm_MouseDown;
+
+            // Create and show the circular magnifier.
+            magnifier = new MagnifierForm();
+            magnifier.Show();
         }
 
         private void DesktopColorPickerForm_KeyDown(object sender, KeyEventArgs e)
         {
             if (e.KeyCode == Keys.Escape)
             {
+                CloseMagnifier();
                 this.DialogResult = DialogResult.Cancel;
                 this.Close();
             }
@@ -201,6 +291,7 @@ namespace YourPicker
 
         private void DesktopColorPickerForm_MouseDown(object sender, MouseEventArgs e)
         {
+            CloseMagnifier();
             this.Hide();
             Point screenPoint = Cursor.Position;
             IntPtr hdc = GetDC(IntPtr.Zero);
@@ -213,9 +304,19 @@ namespace YourPicker
             this.DialogResult = DialogResult.OK;
             this.Close();
         }
+
+        private void CloseMagnifier()
+        {
+            if (magnifier != null)
+            {
+                magnifier.Close();
+                magnifier = null;
+            }
+        }
     }
 
-    // FIXED-SIZE COLOR PICKER FORM (Launched in Separate STA Thread)
+    // FIXED-SIZE COLOR PICKER FORM with Dark Mode and RGB/HSV sliders.
+    // (The RGB and HSV adjustment boxes remain unchanged.)
     public class ColorPickerForm : Form
     {
         private ColorWheelControl colorWheel;
@@ -230,90 +331,353 @@ namespace YourPicker
         private Button okButton;
         private Button cancelButton;
 
+        // Slider controls for manual RGB and HSV adjustments.
+        private GroupBox groupBoxRGB;
+        private GroupBox groupBoxHSV;
+        private TrackBar trackBar_R;
+        private TrackBar trackBar_G;
+        private TrackBar trackBar_B;
+        private TrackBar trackBar_H;
+        private TrackBar trackBar_S;
+        private TrackBar trackBar_V;
+
+        private bool darkMode;
+        private bool isUpdatingSliders = false; // Prevent recursive updates.
         public Color SelectedColor { get; private set; }
 
-        public ColorPickerForm()
+        // Constructor accepts a darkMode parameter.
+        public ColorPickerForm(bool darkMode)
         {
-            // Fixed-size, non-resizable.
+            this.darkMode = darkMode;
+            // Adjusted form size to reduce overall height.
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
             this.MinimizeBox = false;
             this.StartPosition = FormStartPosition.CenterScreen;
-            this.ClientSize = new Size(480, 440);
+            this.ClientSize = new Size(480, 480); // Overall height reduced.
             this.SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint, true);
             this.UpdateStyles();
             this.Text = "YourPicker";
 
+            if (this.darkMode)
+            {
+                this.BackColor = ColorTranslator.FromHtml("#0d1117");
+                this.ForeColor = ColorTranslator.FromHtml("#c9d1d9");
+            }
+
             // Color wheel.
             colorWheel = new ColorWheelControl { Location = new Point(20, 10) };
-            colorWheel.ColorChanged += OnColorChanged;
+            colorWheel.ColorChanged += (s, e) => { UpdateColorFromWheel(); RefreshUI(); };
             this.Controls.Add(colorWheel);
 
             // Brightness slider.
             Label brightnessLabel = new Label { Text = "Brightness", Location = new Point(340, 0), AutoSize = true };
+            if (this.darkMode)
+                brightnessLabel.ForeColor = ColorTranslator.FromHtml("#c9d1d9");
             this.Controls.Add(brightnessLabel);
-            brightnessBar = new TrackBar { Minimum = 0, Maximum = 100, Value = 100, TickFrequency = 10, Orientation = Orientation.Vertical, Location = new Point(340, 10), Height = 300 };
-            brightnessBar.ValueChanged += OnColorChanged;
+            brightnessBar = new TrackBar
+            {
+                Minimum = 0,
+                Maximum = 100,
+                Value = 100,
+                TickFrequency = 10,
+                Orientation = Orientation.Vertical,
+                Location = new Point(340, 10),
+                Height = 200 // Reduced from 300.
+            };
+            brightnessBar.ValueChanged += (s, e) => { if (!isUpdatingSliders) { UpdateColorFromWheel(); RefreshUI(); } };
+            if (this.darkMode)
+            {
+                brightnessBar.BackColor = ColorTranslator.FromHtml("#0d1117");
+                brightnessBar.ForeColor = ColorTranslator.FromHtml("#c9d1d9");
+            }
             this.Controls.Add(brightnessBar);
 
             // Opacity slider.
             Label alphaLabel = new Label { Text = "Opacity", Location = new Point(400, 0), AutoSize = true };
+            if (this.darkMode)
+                alphaLabel.ForeColor = ColorTranslator.FromHtml("#c9d1d9");
             this.Controls.Add(alphaLabel);
-            alphaBar = new TrackBar { Minimum = 0, Maximum = 100, Value = 100, TickFrequency = 10, Orientation = Orientation.Vertical, Location = new Point(400, 10), Height = 300 };
-            alphaBar.ValueChanged += OnColorChanged;
+            alphaBar = new TrackBar
+            {
+                Minimum = 0,
+                Maximum = 100,
+                Value = 100,
+                TickFrequency = 10,
+                Orientation = Orientation.Vertical,
+                Location = new Point(400, 10),
+                Height = 200 // Reduced from 300.
+            };
+            alphaBar.ValueChanged += (s, e) => { if (!isUpdatingSliders) { UpdateColorFromWheel(); RefreshUI(); } };
+            if (this.darkMode)
+            {
+                alphaBar.BackColor = ColorTranslator.FromHtml("#0d1117");
+                alphaBar.ForeColor = ColorTranslator.FromHtml("#c9d1d9");
+            }
             this.Controls.Add(alphaBar);
 
             // Preview panel.
-            previewPanel = new Panel { Location = new Point(20, 320), Size = new Size(300, 20), BorderStyle = BorderStyle.FixedSingle };
+            previewPanel = new Panel { Location = new Point(20, 220), Size = new Size(300, 20), BorderStyle = BorderStyle.FixedSingle };
+            if (this.darkMode)
+                previewPanel.BackColor = ColorTranslator.FromHtml("#161b22");
             this.Controls.Add(previewPanel);
 
             // HEX label.
-            hexLabel = new Label { Location = new Point(20, 345), Size = new Size(300, 20), TextAlign = ContentAlignment.MiddleLeft };
+            hexLabel = new Label { Location = new Point(20, 245), Size = new Size(300, 20), TextAlign = ContentAlignment.MiddleLeft };
+            if (this.darkMode)
+                hexLabel.ForeColor = ColorTranslator.FromHtml("#c9d1d9");
             this.Controls.Add(hexLabel);
-            hexCopyLabel = new Label { Text = "📋", Location = new Point(340, 345), AutoSize = true, Cursor = Cursors.Hand, Font = new Font("Segoe UI Emoji", 12) };
+            hexCopyLabel = new Label
+            {
+                Text = "📋",
+                Location = new Point(340, 245),
+                AutoSize = true,
+                Cursor = Cursors.Hand,
+                Font = new Font("Segoe UI Emoji", 12)
+            };
+            if (this.darkMode)
+                hexCopyLabel.ForeColor = ColorTranslator.FromHtml("#c9d1d9");
             hexCopyLabel.Click += HexCopyLabel_Click;
             this.Controls.Add(hexCopyLabel);
 
             // RGB label.
-            rgbLabel = new Label { Location = new Point(20, 370), Size = new Size(300, 20), TextAlign = ContentAlignment.MiddleLeft };
+            rgbLabel = new Label { Location = new Point(20, 270), Size = new Size(300, 20), TextAlign = ContentAlignment.MiddleLeft };
+            if (this.darkMode)
+                rgbLabel.ForeColor = ColorTranslator.FromHtml("#c9d1d9");
             this.Controls.Add(rgbLabel);
-            rgbCopyLabel = new Label { Text = "📋", Location = new Point(340, 370), AutoSize = true, Cursor = Cursors.Hand, Font = new Font("Segoe UI Emoji", 12) };
+            rgbCopyLabel = new Label
+            {
+                Text = "📋",
+                Location = new Point(340, 270),
+                AutoSize = true,
+                Cursor = Cursors.Hand,
+                Font = new Font("Segoe UI Emoji", 12)
+            };
+            if (this.darkMode)
+                rgbCopyLabel.ForeColor = ColorTranslator.FromHtml("#c9d1d9");
             rgbCopyLabel.Click += RgbCopyLabel_Click;
             this.Controls.Add(rgbCopyLabel);
 
+            // Group Box for RGB adjustments.
+            groupBoxRGB = new GroupBox
+            {
+                Text = "RGB Adjustments",
+                Location = new Point(20, 300),
+                Size = new Size(200, 130)
+            };
+            if (this.darkMode)
+            {
+                groupBoxRGB.BackColor = ColorTranslator.FromHtml("#0d1117");
+                groupBoxRGB.ForeColor = ColorTranslator.FromHtml("#c9d1d9");
+            }
+            // TrackBar for R.
+            Label labelR = new Label { Text = "R:", Location = new Point(10, 20), AutoSize = true };
+            trackBar_R = new TrackBar
+            {
+                Orientation = Orientation.Horizontal,
+                Minimum = 0,
+                Maximum = 255,
+                TickFrequency = 5,
+                Location = new Point(40, 15),
+                Width = 140
+            };
+            trackBar_R.ValueChanged += TrackBarRGB_ValueChanged;
+            if (this.darkMode)
+            {
+                trackBar_R.BackColor = ColorTranslator.FromHtml("#0d1117");
+                trackBar_R.ForeColor = ColorTranslator.FromHtml("#c9d1d9");
+            }
+            groupBoxRGB.Controls.Add(labelR);
+            groupBoxRGB.Controls.Add(trackBar_R);
+
+            // TrackBar for G.
+            Label labelG = new Label { Text = "G:", Location = new Point(10, 60), AutoSize = true };
+            trackBar_G = new TrackBar
+            {
+                Orientation = Orientation.Horizontal,
+                Minimum = 0,
+                Maximum = 255,
+                TickFrequency = 5,
+                Location = new Point(40, 55),
+                Width = 140
+            };
+            trackBar_G.ValueChanged += TrackBarRGB_ValueChanged;
+            if (this.darkMode)
+            {
+                trackBar_G.BackColor = ColorTranslator.FromHtml("#0d1117");
+                trackBar_G.ForeColor = ColorTranslator.FromHtml("#c9d1d9");
+            }
+            groupBoxRGB.Controls.Add(labelG);
+            groupBoxRGB.Controls.Add(trackBar_G);
+
+            // TrackBar for B.
+            Label labelB = new Label { Text = "B:", Location = new Point(10, 100), AutoSize = true };
+            trackBar_B = new TrackBar
+            {
+                Orientation = Orientation.Horizontal,
+                Minimum = 0,
+                Maximum = 255,
+                TickFrequency = 5,
+                Location = new Point(40, 95),
+                Width = 140
+            };
+            trackBar_B.ValueChanged += TrackBarRGB_ValueChanged;
+            if (this.darkMode)
+            {
+                trackBar_B.BackColor = ColorTranslator.FromHtml("#0d1117");
+                trackBar_B.ForeColor = ColorTranslator.FromHtml("#c9d1d9");
+            }
+            groupBoxRGB.Controls.Add(labelB);
+            groupBoxRGB.Controls.Add(trackBar_B);
+
+            this.Controls.Add(groupBoxRGB);
+
+            // Group Box for HSV adjustments.
+            groupBoxHSV = new GroupBox
+            {
+                Text = "HSV Adjustments",
+                Location = new Point(230, 300),
+                Size = new Size(230, 130)
+            };
+            if (this.darkMode)
+            {
+                groupBoxHSV.BackColor = ColorTranslator.FromHtml("#0d1117");
+                groupBoxHSV.ForeColor = ColorTranslator.FromHtml("#c9d1d9");
+            }
+            // TrackBar for H.
+            Label labelH = new Label { Text = "H:", Location = new Point(10, 20), AutoSize = true };
+            trackBar_H = new TrackBar
+            {
+                Orientation = Orientation.Horizontal,
+                Minimum = 0,
+                Maximum = 360,
+                TickFrequency = 10,
+                Location = new Point(40, 15),
+                Width = 160
+            };
+            trackBar_H.ValueChanged += TrackBarHSV_ValueChanged;
+            if (this.darkMode)
+            {
+                trackBar_H.BackColor = ColorTranslator.FromHtml("#0d1117");
+                trackBar_H.ForeColor = ColorTranslator.FromHtml("#c9d1d9");
+            }
+            groupBoxHSV.Controls.Add(labelH);
+            groupBoxHSV.Controls.Add(trackBar_H);
+
+            // TrackBar for S.
+            Label labelS = new Label { Text = "S:", Location = new Point(10, 60), AutoSize = true };
+            trackBar_S = new TrackBar
+            {
+                Orientation = Orientation.Horizontal,
+                Minimum = 0,
+                Maximum = 100,
+                TickFrequency = 5,
+                Location = new Point(40, 55),
+                Width = 160
+            };
+            trackBar_S.ValueChanged += TrackBarHSV_ValueChanged;
+            if (this.darkMode)
+            {
+                trackBar_S.BackColor = ColorTranslator.FromHtml("#0d1117");
+                trackBar_S.ForeColor = ColorTranslator.FromHtml("#c9d1d9");
+            }
+            groupBoxHSV.Controls.Add(labelS);
+            groupBoxHSV.Controls.Add(trackBar_S);
+
+            // TrackBar for V.
+            Label labelV = new Label { Text = "V:", Location = new Point(10, 100), AutoSize = true };
+            trackBar_V = new TrackBar
+            {
+                Orientation = Orientation.Horizontal,
+                Minimum = 0,
+                Maximum = 100,
+                TickFrequency = 5,
+                Location = new Point(40, 95),
+                Width = 160
+            };
+            trackBar_V.ValueChanged += TrackBarHSV_ValueChanged;
+            if (this.darkMode)
+            {
+                trackBar_V.BackColor = ColorTranslator.FromHtml("#0d1117");
+                trackBar_V.ForeColor = ColorTranslator.FromHtml("#c9d1d9");
+            }
+            groupBoxHSV.Controls.Add(labelV);
+            groupBoxHSV.Controls.Add(trackBar_V);
+
+            this.Controls.Add(groupBoxHSV);
+
             // "Pick Desktop" button.
-            desktopPickButton = new Button { Text = "Pick Desktop", Location = new Point(20, 400), Size = new Size(90, 25) };
+            desktopPickButton = new Button { Text = "Pick Desktop", Location = new Point(20, 440), Size = new Size(90, 25) };
+            if (this.darkMode)
+            {
+                desktopPickButton.FlatStyle = FlatStyle.Flat;
+                desktopPickButton.BackColor = ColorTranslator.FromHtml("#161b22");
+                desktopPickButton.ForeColor = ColorTranslator.FromHtml("#c9d1d9");
+            }
             desktopPickButton.Click += DesktopPickButton_Click;
             this.Controls.Add(desktopPickButton);
 
             // OK and Cancel buttons.
-            okButton = new Button { Text = "OK", Location = new Point(120, 400), Size = new Size(60, 25) };
+            okButton = new Button { Text = "OK", Location = new Point(120, 440), Size = new Size(60, 25) };
+            if (this.darkMode)
+            {
+                okButton.FlatStyle = FlatStyle.Flat;
+                okButton.BackColor = ColorTranslator.FromHtml("#161b22");
+                okButton.ForeColor = ColorTranslator.FromHtml("#c9d1d9");
+            }
             okButton.Click += OkButton_Click;
             this.Controls.Add(okButton);
-            cancelButton = new Button { Text = "Cancel", Location = new Point(190, 400), Size = new Size(60, 25) };
+            cancelButton = new Button { Text = "Cancel", Location = new Point(190, 440), Size = new Size(60, 25) };
+            if (this.darkMode)
+            {
+                cancelButton.FlatStyle = FlatStyle.Flat;
+                cancelButton.BackColor = ColorTranslator.FromHtml("#161b22");
+                cancelButton.ForeColor = ColorTranslator.FromHtml("#c9d1d9");
+            }
             cancelButton.Click += CancelButton_Click;
             this.Controls.Add(cancelButton);
 
-            UpdatePreview();
+            // Initialize SelectedColor and update the UI.
+            UpdateColorFromWheel();
+            RefreshUI();
         }
 
-        private void OnColorChanged(object sender, EventArgs e)
-        {
-            UpdatePreview();
-        }
-
-        // Update preview and continuously update the shared global value.
-        private void UpdatePreview()
+        // Called when the color wheel, brightness, or alpha sliders change.
+        private void UpdateColorFromWheel()
         {
             double brightness = brightnessBar.Value / 100.0;
             Color baseColor = ColorWheelControl.ColorFromHSV(colorWheel.SelectedHue, colorWheel.SelectedSaturation, brightness);
             int alpha = (int)(alphaBar.Value / 100.0 * 255);
             SelectedColor = Color.FromArgb(alpha, baseColor.R, baseColor.G, baseColor.B);
-            previewPanel.BackColor = SelectedColor;
+        }
 
+        // Refresh all UI elements (preview panel, labels, and slider positions).
+        private void RefreshUI()
+        {
+            isUpdatingSliders = true;
+
+            // Update RGB sliders.
+            trackBar_R.Value = SelectedColor.R;
+            trackBar_G.Value = SelectedColor.G;
+            trackBar_B.Value = SelectedColor.B;
+
+            // Convert current color to HSV.
+            double h, s, v;
+            RgbToHsv(SelectedColor, out h, out s, out v);
+            trackBar_H.Value = (int)Math.Round(h);
+            trackBar_S.Value = (int)Math.Round(s * 100);
+            trackBar_V.Value = (int)Math.Round(v * 100);
+
+            // Update brightness slider and color wheel.
+            brightnessBar.Value = (int)Math.Round(v * 100);
+            colorWheel.SetSelection(h, s);
+
+            // Update preview panel and labels.
+            previewPanel.BackColor = SelectedColor;
+            previewPanel.Invalidate(); // Force repaint.
             string hexColor;
             string rgbColor;
-            if (alpha == 255)
+            if (SelectedColor.A == 255)
             {
                 hexColor = $"{SelectedColor.R:X2}{SelectedColor.G:X2}{SelectedColor.B:X2}";
                 rgbColor = $"{SelectedColor.R},{SelectedColor.G},{SelectedColor.B}";
@@ -324,25 +688,13 @@ namespace YourPicker
                 rgbColor = $"{SelectedColor.R},{SelectedColor.G},{SelectedColor.B},{SelectedColor.A}";
             }
             hexLabel.Text = $"HEX: {hexColor}";
-            rgbLabel.Text = $"RGB:{rgbColor}";
+            rgbLabel.Text = $"RGB: {rgbColor}";
             if (Plugin.gReturnValue.ToUpper() == "RGB")
                 Plugin.UpdateLastColor(rgbColor);
             else
                 Plugin.UpdateLastColor(hexColor);
-        }
 
-        private void HexCopyLabel_Click(object sender, EventArgs e)
-        {
-            string hexColor = hexLabel.Text.Replace("HEX: ", "");
-            Clipboard.SetText(hexColor);
-            MessageBox.Show("Copied " + hexColor + " to clipboard.", "Copied", MessageBoxButtons.OK, MessageBoxIcon.Information);
-        }
-
-        private void RgbCopyLabel_Click(object sender, EventArgs e)
-        {
-            string rgbText = rgbLabel.Text;
-            Clipboard.SetText(rgbText);
-            MessageBox.Show("Copied " + rgbText + " to clipboard.", "Copied", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            isUpdatingSliders = false;
         }
 
         // Converts an RGB color to HSV.
@@ -368,6 +720,65 @@ namespace YourPicker
             value = max;
         }
 
+        // Event handler for changes in any of the RGB sliders.
+        private void TrackBarRGB_ValueChanged(object sender, EventArgs e)
+        {
+            if (!isUpdatingSliders)
+            {
+                isUpdatingSliders = true;
+                int r = trackBar_R.Value;
+                int g = trackBar_G.Value;
+                int b = trackBar_B.Value;
+                int alpha = (int)(alphaBar.Value / 100.0 * 255);
+                SelectedColor = Color.FromArgb(alpha, r, g, b);
+                double h, s, v;
+                RgbToHsv(SelectedColor, out h, out s, out v);
+                trackBar_H.Value = (int)Math.Round(h);
+                trackBar_S.Value = (int)Math.Round(s * 100);
+                trackBar_V.Value = (int)Math.Round(v * 100);
+                brightnessBar.Value = (int)Math.Round(v * 100);
+                colorWheel.SetSelection(h, s);
+                RefreshUI();
+                isUpdatingSliders = false;
+            }
+        }
+
+        // Event handler for changes in any of the HSV sliders.
+        private void TrackBarHSV_ValueChanged(object sender, EventArgs e)
+        {
+            if (!isUpdatingSliders)
+            {
+                isUpdatingSliders = true;
+                double h = trackBar_H.Value;
+                double s = trackBar_S.Value / 100.0;
+                double v = trackBar_V.Value / 100.0;
+                Color baseColor = ColorWheelControl.ColorFromHSV(h, s, v);
+                int alpha = (int)(alphaBar.Value / 100.0 * 255);
+                SelectedColor = Color.FromArgb(alpha, baseColor.R, baseColor.G, baseColor.B);
+                trackBar_R.Value = SelectedColor.R;
+                trackBar_G.Value = SelectedColor.G;
+                trackBar_B.Value = SelectedColor.B;
+                brightnessBar.Value = (int)Math.Round(v * 100);
+                colorWheel.SetSelection(h, s);
+                RefreshUI();
+                isUpdatingSliders = false;
+            }
+        }
+
+        private void HexCopyLabel_Click(object sender, EventArgs e)
+        {
+            string hexColor = hexLabel.Text.Replace("HEX: ", "");
+            Clipboard.SetText(hexColor);
+            MessageBox.Show("Copied " + hexColor + " to clipboard.", "Copied", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+
+        private void RgbCopyLabel_Click(object sender, EventArgs e)
+        {
+            string rgbText = rgbLabel.Text;
+            Clipboard.SetText(rgbText);
+            MessageBox.Show("Copied " + rgbText + " to clipboard.", "Copied", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+
         private void DesktopPickButton_Click(object sender, EventArgs e)
         {
             using (DesktopColorPickerForm dpForm = new DesktopColorPickerForm())
@@ -380,7 +791,8 @@ namespace YourPicker
                     colorWheel.SetSelection(hue, saturation);
                     brightnessBar.Value = (int)(value * 100);
                     alphaBar.Value = (int)(picked.A / 255.0 * 100);
-                    UpdatePreview();
+                    UpdateColorFromWheel();
+                    RefreshUI();
                 }
             }
         }
@@ -398,12 +810,13 @@ namespace YourPicker
         }
     }
 
-    // PLUGIN CLASS
+    // PLUGIN CLASS for Rainmeter integration.
     public static class Plugin
     {
         public static string gReturnValue = "Hex"; // Default format.
         public static string gFinishAction = "";
         public static string gLastColor = "";
+        public static bool gDarkMode = false; // Dark mode flag.
         public static IntPtr gRainmeter = IntPtr.Zero;
 
         [DllExport]
@@ -416,7 +829,6 @@ namespace YourPicker
         [DllExport]
         public static void Finalize(IntPtr data)
         {
-           
         }
 
         [DllExport]
@@ -425,6 +837,8 @@ namespace YourPicker
             Rainmeter.API api = new Rainmeter.API(rm);
             gReturnValue = api.ReadString("ReturnValue", "Hex");
             gFinishAction = api.ReadString("OnFinishAction", "");
+            // Read DarkMode setting from Rainmeter. If DarkMode=1 then enable dark mode.
+            gDarkMode = api.ReadInt("DarkMode", 0) == 1;
             maxValue = 1.0;
         }
 
@@ -434,7 +848,7 @@ namespace YourPicker
             return 0.0;
         }
 
-        // Launch the picker in a separate STA thread.
+        // Launch the color picker or magnifier in a separate STA thread.
         [DllExport]
         public static void ExecuteBang(IntPtr data, IntPtr args)
         {
@@ -443,7 +857,8 @@ namespace YourPicker
             {
                 System.Threading.Thread t = new System.Threading.Thread(() =>
                 {
-                    ColorPickerForm picker = new ColorPickerForm();
+                    // Launch the full color picker GUI.
+                    ColorPickerForm picker = new ColorPickerForm(gDarkMode);
                     Application.Run(picker);
                     if (picker.DialogResult == DialogResult.OK)
                     {
@@ -459,11 +874,13 @@ namespace YourPicker
                             else
                                 gLastColor = $"{selected.R:X2}{selected.G:X2}{selected.B:X2}";
                         }
+                        Rainmeter.API api = new Rainmeter.API(gRainmeter);
+                        api.Execute("[!UpdateMeasure MeasureYourPicker]");
                         if (!string.IsNullOrEmpty(gFinishAction))
                         {
                             try
                             {
-                                new Rainmeter.API(gRainmeter).Execute(gFinishAction);
+                                api.Execute(gFinishAction);
                             }
                             catch { }
                         }
@@ -472,9 +889,52 @@ namespace YourPicker
                 t.SetApartmentState(System.Threading.ApartmentState.STA);
                 t.Start();
             }
+            else if (arguments.Equals("-mp", StringComparison.OrdinalIgnoreCase))
+            {
+                // In -mp mode, show only the magnifier (DesktopColorPickerForm) to select a color.
+                System.Threading.Thread t = new System.Threading.Thread(() =>
+                {
+                    using (DesktopColorPickerForm dpForm = new DesktopColorPickerForm())
+                    {
+                        Application.Run(dpForm);
+                        if (dpForm.DialogResult == DialogResult.OK)
+                        {
+                            Color selected = dpForm.PickedColor;
+                            string newColor;
+                            if (gReturnValue.ToUpper() == "RGB")
+                            {
+                                newColor = $"{selected.R},{selected.G},{selected.B}";
+                            }
+                            else
+                            {
+                                if (selected.A < 255)
+                                    newColor = $"{selected.R:X2}{selected.G:X2}{selected.B:X2}{selected.A:X2}";
+                                else
+                                    newColor = $"{selected.R:X2}{selected.G:X2}{selected.B:X2}";
+                            }
+                            // First update the plugin's value.
+                            Plugin.UpdateLastColor(newColor);
+                            Rainmeter.API api = new Rainmeter.API(gRainmeter);
+                            // Update the measure.
+                            api.Execute("[!UpdateMeasure MeasureYourPicker]");
+                            // Then execute on finish action.
+                            if (!string.IsNullOrEmpty(gFinishAction))
+                            {
+                                try
+                                {
+                                    api.Execute(gFinishAction);
+                                }
+                                catch { }
+                            }
+                        }
+                    }
+                });
+                t.SetApartmentState(System.Threading.ApartmentState.STA);
+                t.Start();
+            }
         }
 
-        // Continuously returns the current color value.
+        // Returns the current color as a string.
         [DllExport]
         public static IntPtr GetString(IntPtr data)
         {
