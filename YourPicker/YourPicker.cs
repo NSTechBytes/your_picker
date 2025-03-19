@@ -10,6 +10,7 @@ namespace YourPicker
     // CUSTOM COLOR WHEEL CONTROL
     public class ColorWheelControl : Control
     {
+
         private Bitmap colorWheel;
         private int wheelSize = 200; // Reduced from 300.
         private bool isDragging = false;
@@ -816,6 +817,7 @@ namespace YourPicker
         public static string gReturnValue = "Hex"; // Default format.
         public static string gFinishAction = "";
         public static string gLastColor = "";
+        public static string myName = "";
         public static bool gDarkMode = false; // Dark mode flag.
         public static IntPtr gRainmeter = IntPtr.Zero;
 
@@ -836,6 +838,7 @@ namespace YourPicker
         {
             Rainmeter.API api = new Rainmeter.API(rm);
             gReturnValue = api.ReadString("ReturnValue", "Hex");
+            myName = api.GetMeasureName();
             gFinishAction = api.ReadString("OnFinishAction", "");
             // Read DarkMode setting from Rainmeter. If DarkMode=1 then enable dark mode.
             gDarkMode = api.ReadInt("DarkMode", 0) == 1;
@@ -916,7 +919,7 @@ namespace YourPicker
                             Plugin.UpdateLastColor(newColor);
                             Rainmeter.API api = new Rainmeter.API(gRainmeter);
                             // Update the measure.
-                            api.Execute("[!UpdateMeasure MeasureYourPicker]");
+                            api.Execute($"!UpdateMeasure \"{myName}\"");
                             // Then execute on finish action.
                             if (!string.IsNullOrEmpty(gFinishAction))
                             {
