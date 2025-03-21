@@ -196,8 +196,14 @@ namespace YourPicker
             timer = new Timer();
             timer.Interval = 100; // Update every 100 ms to reduce flickering.
             timer.Tick += Timer_Tick;
+
+            // Set the initial location to the current mouse position.
+            Point pos = Cursor.Position;
+            this.Location = new Point(pos.X + 20, pos.Y + 20);
+
             timer.Start();
         }
+
 
         private void Timer_Tick(object sender, EventArgs e)
         {
