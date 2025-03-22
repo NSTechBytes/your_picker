@@ -165,14 +165,30 @@ namespace YourPicker
         }
     }
 
-    // CIRCULAR MAGNIFIER FORM: shows a zoomed circular preview around the mouse pointer.
     public class MagnifierForm : Form
     {
         private Timer timer;
-        // Increased values: CaptureSize from 20 to 40, ZoomFactor from 2 to 4.
         public int ZoomFactor { get; set; } = 4;
         public int CaptureSize { get; set; } = 40;
         private Bitmap magnifiedImage;
+
+        // Import SetWindowPos API.
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool SetWindowPos(
+            IntPtr hWnd,
+            IntPtr hWndInsertAfter,
+            int X,
+            int Y,
+            int cx,
+            int cy,
+            uint uFlags);
+
+        // Constants for SetWindowPos.
+        private static readonly IntPtr HWND_TOPMOST = new IntPtr(-1);
+        private const uint SWP_NOMOVE = 0x0002;
+        private const uint SWP_NOSIZE = 0x0001;
+        private const uint SWP_NOACTIVATE = 0x0010;
+        private const uint SWP_SHOWWINDOW = 0x0040;
 
         public MagnifierForm()
         {
@@ -193,17 +209,26 @@ namespace YourPicker
             this.ShowInTaskbar = false;
             this.Opacity = 0.9;
 
-            timer = new Timer();
-            timer.Interval = 100; // Update every 100 ms to reduce flickering.
-            timer.Tick += Timer_Tick;
-
             // Set the initial location to the current mouse position.
             Point pos = Cursor.Position;
             this.Location = new Point(pos.X + 20, pos.Y + 20);
 
+            timer = new Timer();
+            timer.Interval = 100; // Update every 100 ms.
+            timer.Tick += Timer_Tick;
             timer.Start();
         }
 
+        // Override CreateParams to enforce topmost behavior.
+        protected override CreateParams CreateParams
+        {
+            get
+            {
+                CreateParams cp = base.CreateParams;
+                cp.ExStyle |= 0x00000008; // WS_EX_TOPMOST
+                return cp;
+            }
+        }
 
         private void Timer_Tick(object sender, EventArgs e)
         {
@@ -211,6 +236,11 @@ namespace YourPicker
             Point pos = Cursor.Position;
             // Position the magnifier slightly offset from the pointer.
             this.Location = new Point(pos.X + 20, pos.Y + 20);
+
+            // Force this window to the topmost position.
+            SetWindowPos(this.Handle, HWND_TOPMOST, 0, 0, 0, 0,
+                SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW);
+
             // Capture a small area around the mouse pointer.
             using (Bitmap bmp = new Bitmap(CaptureSize, CaptureSize))
             {
@@ -252,8 +282,8 @@ namespace YourPicker
         }
     }
 
-    // DESKTOP COLOR PICKER FORM (DPI-Aware) with Circular Magnifier.
-    public class DesktopColorPickerForm : Form
+        // DESKTOP COLOR PICKER FORM (DPI-Aware) with Circular Magnifier.
+        public class DesktopColorPickerForm : Form
     {
         public Color PickedColor { get; private set; }
         private MagnifierForm magnifier; // For the magnified preview.
