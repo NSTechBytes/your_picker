@@ -621,41 +621,25 @@ namespace YourPicker
 
         private void PreviewPanel_Paint(object sender, PaintEventArgs e)
         {
-            using (var path = new GraphicsPath())
+            // Clear any region to ensure full rectangle painting
+            previewPanel.Region = null;
+            
+            var rect = new Rectangle(0, 0, previewPanel.Width - 1, previewPanel.Height - 1);
+            
+            using (var brush = new SolidBrush(SelectedColor))
             {
-                int radius = 8;
-                var rect = new Rectangle(0, 0, previewPanel.Width - 1, previewPanel.Height - 1);
-                path.AddArc(rect.X, rect.Y, radius, radius, 180, 90);
-                path.AddArc(rect.Right - radius, rect.Y, radius, radius, 270, 90);
-                path.AddArc(rect.Right - radius, rect.Bottom - radius, radius, radius, 0, 90);
-                path.AddArc(rect.X, rect.Bottom - radius, radius, radius, 90, 90);
-                path.CloseFigure();
-                previewPanel.Region = new Region(path);
-                
-                using (var brush = new SolidBrush(SelectedColor))
-                {
-                    e.Graphics.FillPath(brush, path);
-                }
-                using (var pen = new Pen(darkMode ? ColorTranslator.FromHtml("#30363d") : ColorTranslator.FromHtml("#d0d7de"), 2))
-                {
-                    e.Graphics.DrawPath(pen, path);
-                }
-                
-                // Draw outer border (black) for better definition
-                using (var outerPath = new GraphicsPath())
-                {
-                    var outerRect = new Rectangle(1, 1, previewPanel.Width - 3, previewPanel.Height - 3);
-                    outerPath.AddArc(outerRect.X, outerRect.Y, radius, radius, 180, 90);
-                    outerPath.AddArc(outerRect.Right - radius, outerRect.Y, radius, radius, 270, 90);
-                    outerPath.AddArc(outerRect.Right - radius, outerRect.Bottom - radius, radius, radius, 0, 90);
-                    outerPath.AddArc(outerRect.X, outerRect.Bottom - radius, radius, radius, 90, 90);
-                    outerPath.CloseFigure();
-                    
-                    using (var outerPen = new Pen(Color.Black, 1))
-                    {
-                        e.Graphics.DrawPath(outerPen, outerPath);
-                    }
-                }
+                e.Graphics.FillRectangle(brush, rect);
+            }
+            
+            using (var pen = new Pen(darkMode ? ColorTranslator.FromHtml("#30363d") : ColorTranslator.FromHtml("#d0d7de"), 2))
+            {
+                e.Graphics.DrawRectangle(pen, rect);
+            }
+            
+            // Draw outer border (black) for better definition
+            using (var outerPen = new Pen(Color.Black, 1))
+            {
+                e.Graphics.DrawRectangle(outerPen, rect);
             }
         }
 
