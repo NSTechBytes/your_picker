@@ -123,9 +123,6 @@ namespace YourPicker
             base.OnPaint(e);
             if (colorWheel != null)
                 e.Graphics.DrawImage(colorWheel, 0, 0);
-            // Draw a bold border around the color wheel.
-            using (Pen borderPen = new Pen(Color.Black, 4))
-                e.Graphics.DrawEllipse(borderPen, 0, 0, wheelSize - 1, wheelSize - 1);
 
             int radius = wheelSize / 2;
             int indicatorSize = 10;
@@ -221,334 +218,467 @@ namespace YourPicker
         }
     }
 
-    // FIXED-SIZE COLOR PICKER FORM with Dark Mode and RGB/HSV sliders.
-    // (The RGB and HSV adjustment boxes remain unchanged.)
-    public class ColorPickerForm : Form
+    /// <summary>
+    /// Modern color picker form with enhanced visual design
+    /// </summary>
+    public class ModernColorPickerForm : Form
     {
         private ColorWheelControl colorWheel;
-        private TrackBar brightnessBar;
-        private TrackBar alphaBar;
+        private ModernSlider brightnessBar;
+        private ModernSlider alphaBar;
         private Panel previewPanel;
         private Label hexLabel;
         private Label rgbLabel;
-        private Label hexCopyLabel;
-        private Label rgbCopyLabel;
+        private Button hexCopyButton;
+        private Button rgbCopyButton;
         private Button desktopPickButton;
         private Button okButton;
         private Button cancelButton;
 
-        // Slider controls for manual RGB and HSV adjustments.
+        // Slider controls for manual RGB and HSV adjustments
         private GroupBox groupBoxRGB;
         private GroupBox groupBoxHSV;
-        private TrackBar trackBar_R;
-        private TrackBar trackBar_G;
-        private TrackBar trackBar_B;
-        private TrackBar trackBar_H;
-        private TrackBar trackBar_S;
-        private TrackBar trackBar_V;
+        private ModernSlider trackBar_R, trackBar_G, trackBar_B;
+        private ModernSlider trackBar_H, trackBar_S, trackBar_V;
+        private Label labelRValue, labelGValue, labelBValue;
+        private Label labelHValue, labelSValue, labelVValue;
 
         private bool darkMode;
-        private bool isUpdatingSliders = false; // Prevent recursive updates.
+        private bool isUpdatingSliders = false;
         public Color SelectedColor { get; private set; }
 
-        // Constructor accepts a darkMode parameter.
-        public ColorPickerForm(bool darkMode)
+        public ModernColorPickerForm(bool darkMode)
         {
             this.darkMode = darkMode;
-            // Adjusted form size to reduce overall height.
-            this.FormBorderStyle = FormBorderStyle.FixedDialog;
-            this.MaximizeBox = false;
-            this.MinimizeBox = false;
-            this.StartPosition = FormStartPosition.CenterScreen;
-            this.ClientSize = new Size(480, 480); // Overall height reduced.
-            this.SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint, true);
-            this.UpdateStyles();
-            this.Text = "YourPicker";
-
-            if (this.darkMode)
-            {
-                this.BackColor = ColorTranslator.FromHtml("#0d1117");
-                this.ForeColor = ColorTranslator.FromHtml("#c9d1d9");
-            }
-
-            // Color wheel.
-            colorWheel = new ColorWheelControl { Location = new Point(20, 10) };
-            colorWheel.ColorChanged += (s, e) => { UpdateColorFromWheel(); RefreshUI(); };
-            this.Controls.Add(colorWheel);
-
-            // Brightness slider.
-            Label brightnessLabel = new Label { Text = "Brightness", Location = new Point(340, 0), AutoSize = true };
-            if (this.darkMode)
-                brightnessLabel.ForeColor = ColorTranslator.FromHtml("#c9d1d9");
-            this.Controls.Add(brightnessLabel);
-            brightnessBar = new TrackBar
-            {
-                Minimum = 0,
-                Maximum = 100,
-                Value = 100,
-                TickFrequency = 10,
-                Orientation = Orientation.Vertical,
-                Location = new Point(340, 10),
-                Height = 200 // Reduced from 300.
-            };
-            brightnessBar.ValueChanged += (s, e) => { if (!isUpdatingSliders) { UpdateColorFromWheel(); RefreshUI(); } };
-            if (this.darkMode)
-            {
-                brightnessBar.BackColor = ColorTranslator.FromHtml("#0d1117");
-                brightnessBar.ForeColor = ColorTranslator.FromHtml("#c9d1d9");
-            }
-            this.Controls.Add(brightnessBar);
-
-            // Opacity slider.
-            Label alphaLabel = new Label { Text = "Opacity", Location = new Point(400, 0), AutoSize = true };
-            if (this.darkMode)
-                alphaLabel.ForeColor = ColorTranslator.FromHtml("#c9d1d9");
-            this.Controls.Add(alphaLabel);
-            alphaBar = new TrackBar
-            {
-                Minimum = 0,
-                Maximum = 100,
-                Value = 100,
-                TickFrequency = 10,
-                Orientation = Orientation.Vertical,
-                Location = new Point(400, 10),
-                Height = 200 // Reduced from 300.
-            };
-            alphaBar.ValueChanged += (s, e) => { if (!isUpdatingSliders) { UpdateColorFromWheel(); RefreshUI(); } };
-            if (this.darkMode)
-            {
-                alphaBar.BackColor = ColorTranslator.FromHtml("#0d1117");
-                alphaBar.ForeColor = ColorTranslator.FromHtml("#c9d1d9");
-            }
-            this.Controls.Add(alphaBar);
-
-            // Preview panel.
-            previewPanel = new Panel { Location = new Point(20, 220), Size = new Size(300, 20), BorderStyle = BorderStyle.FixedSingle };
-            if (this.darkMode)
-                previewPanel.BackColor = ColorTranslator.FromHtml("#161b22");
-            this.Controls.Add(previewPanel);
-
-            // HEX label.
-            hexLabel = new Label { Location = new Point(20, 245), Size = new Size(300, 20), TextAlign = ContentAlignment.MiddleLeft };
-            if (this.darkMode)
-                hexLabel.ForeColor = ColorTranslator.FromHtml("#c9d1d9");
-            this.Controls.Add(hexLabel);
-            hexCopyLabel = new Label
-            {
-                Text = "📋",
-                Location = new Point(340, 245),
-                AutoSize = true,
-                Cursor = Cursors.Hand,
-                Font = new Font("Segoe UI Emoji", 12)
-            };
-            if (this.darkMode)
-                hexCopyLabel.ForeColor = ColorTranslator.FromHtml("#c9d1d9");
-            hexCopyLabel.Click += HexCopyLabel_Click;
-            this.Controls.Add(hexCopyLabel);
-
-            // RGB label.
-            rgbLabel = new Label { Location = new Point(20, 270), Size = new Size(300, 20), TextAlign = ContentAlignment.MiddleLeft };
-            if (this.darkMode)
-                rgbLabel.ForeColor = ColorTranslator.FromHtml("#c9d1d9");
-            this.Controls.Add(rgbLabel);
-            rgbCopyLabel = new Label
-            {
-                Text = "📋",
-                Location = new Point(340, 270),
-                AutoSize = true,
-                Cursor = Cursors.Hand,
-                Font = new Font("Segoe UI Emoji", 12)
-            };
-            if (this.darkMode)
-                rgbCopyLabel.ForeColor = ColorTranslator.FromHtml("#c9d1d9");
-            rgbCopyLabel.Click += RgbCopyLabel_Click;
-            this.Controls.Add(rgbCopyLabel);
-
-            // Group Box for RGB adjustments.
-            groupBoxRGB = new GroupBox
-            {
-                Text = "RGB Adjustments",
-                Location = new Point(20, 300),
-                Size = new Size(200, 130)
-            };
-            if (this.darkMode)
-            {
-                groupBoxRGB.BackColor = ColorTranslator.FromHtml("#0d1117");
-                groupBoxRGB.ForeColor = ColorTranslator.FromHtml("#c9d1d9");
-            }
-            // TrackBar for R.
-            Label labelR = new Label { Text = "R:", Location = new Point(10, 20), AutoSize = true };
-            trackBar_R = new TrackBar
-            {
-                Orientation = Orientation.Horizontal,
-                Minimum = 0,
-                Maximum = 255,
-                TickFrequency = 5,
-                Location = new Point(40, 15),
-                Width = 140
-            };
-            trackBar_R.ValueChanged += TrackBarRGB_ValueChanged;
-            if (this.darkMode)
-            {
-                trackBar_R.BackColor = ColorTranslator.FromHtml("#0d1117");
-                trackBar_R.ForeColor = ColorTranslator.FromHtml("#c9d1d9");
-            }
-            groupBoxRGB.Controls.Add(labelR);
-            groupBoxRGB.Controls.Add(trackBar_R);
-
-            // TrackBar for G.
-            Label labelG = new Label { Text = "G:", Location = new Point(10, 60), AutoSize = true };
-            trackBar_G = new TrackBar
-            {
-                Orientation = Orientation.Horizontal,
-                Minimum = 0,
-                Maximum = 255,
-                TickFrequency = 5,
-                Location = new Point(40, 55),
-                Width = 140
-            };
-            trackBar_G.ValueChanged += TrackBarRGB_ValueChanged;
-            if (this.darkMode)
-            {
-                trackBar_G.BackColor = ColorTranslator.FromHtml("#0d1117");
-                trackBar_G.ForeColor = ColorTranslator.FromHtml("#c9d1d9");
-            }
-            groupBoxRGB.Controls.Add(labelG);
-            groupBoxRGB.Controls.Add(trackBar_G);
-
-            // TrackBar for B.
-            Label labelB = new Label { Text = "B:", Location = new Point(10, 100), AutoSize = true };
-            trackBar_B = new TrackBar
-            {
-                Orientation = Orientation.Horizontal,
-                Minimum = 0,
-                Maximum = 255,
-                TickFrequency = 5,
-                Location = new Point(40, 95),
-                Width = 140
-            };
-            trackBar_B.ValueChanged += TrackBarRGB_ValueChanged;
-            if (this.darkMode)
-            {
-                trackBar_B.BackColor = ColorTranslator.FromHtml("#0d1117");
-                trackBar_B.ForeColor = ColorTranslator.FromHtml("#c9d1d9");
-            }
-            groupBoxRGB.Controls.Add(labelB);
-            groupBoxRGB.Controls.Add(trackBar_B);
-
-            this.Controls.Add(groupBoxRGB);
-
-            // Group Box for HSV adjustments.
-            groupBoxHSV = new GroupBox
-            {
-                Text = "HSV Adjustments",
-                Location = new Point(230, 300),
-                Size = new Size(230, 130)
-            };
-            if (this.darkMode)
-            {
-                groupBoxHSV.BackColor = ColorTranslator.FromHtml("#0d1117");
-                groupBoxHSV.ForeColor = ColorTranslator.FromHtml("#c9d1d9");
-            }
-            // TrackBar for H.
-            Label labelH = new Label { Text = "H:", Location = new Point(10, 20), AutoSize = true };
-            trackBar_H = new TrackBar
-            {
-                Orientation = Orientation.Horizontal,
-                Minimum = 0,
-                Maximum = 360,
-                TickFrequency = 10,
-                Location = new Point(40, 15),
-                Width = 160
-            };
-            trackBar_H.ValueChanged += TrackBarHSV_ValueChanged;
-            if (this.darkMode)
-            {
-                trackBar_H.BackColor = ColorTranslator.FromHtml("#0d1117");
-                trackBar_H.ForeColor = ColorTranslator.FromHtml("#c9d1d9");
-            }
-            groupBoxHSV.Controls.Add(labelH);
-            groupBoxHSV.Controls.Add(trackBar_H);
-
-            // TrackBar for S.
-            Label labelS = new Label { Text = "S:", Location = new Point(10, 60), AutoSize = true };
-            trackBar_S = new TrackBar
-            {
-                Orientation = Orientation.Horizontal,
-                Minimum = 0,
-                Maximum = 100,
-                TickFrequency = 5,
-                Location = new Point(40, 55),
-                Width = 160
-            };
-            trackBar_S.ValueChanged += TrackBarHSV_ValueChanged;
-            if (this.darkMode)
-            {
-                trackBar_S.BackColor = ColorTranslator.FromHtml("#0d1117");
-                trackBar_S.ForeColor = ColorTranslator.FromHtml("#c9d1d9");
-            }
-            groupBoxHSV.Controls.Add(labelS);
-            groupBoxHSV.Controls.Add(trackBar_S);
-
-            // TrackBar for V.
-            Label labelV = new Label { Text = "V:", Location = new Point(10, 100), AutoSize = true };
-            trackBar_V = new TrackBar
-            {
-                Orientation = Orientation.Horizontal,
-                Minimum = 0,
-                Maximum = 100,
-                TickFrequency = 5,
-                Location = new Point(40, 95),
-                Width = 160
-            };
-            trackBar_V.ValueChanged += TrackBarHSV_ValueChanged;
-            if (this.darkMode)
-            {
-                trackBar_V.BackColor = ColorTranslator.FromHtml("#0d1117");
-                trackBar_V.ForeColor = ColorTranslator.FromHtml("#c9d1d9");
-            }
-            groupBoxHSV.Controls.Add(labelV);
-            groupBoxHSV.Controls.Add(trackBar_V);
-
-            this.Controls.Add(groupBoxHSV);
-
-            // "Pick Desktop" button.
-            desktopPickButton = new Button { Text = "Pick Desktop", Location = new Point(20, 440), Size = new Size(90, 25) };
-            if (this.darkMode)
-            {
-                desktopPickButton.FlatStyle = FlatStyle.Flat;
-                desktopPickButton.BackColor = ColorTranslator.FromHtml("#161b22");
-                desktopPickButton.ForeColor = ColorTranslator.FromHtml("#c9d1d9");
-            }
-            desktopPickButton.Click += DesktopPickButton_Click;
-            this.Controls.Add(desktopPickButton);
-
-            // OK and Cancel buttons.
-            okButton = new Button { Text = "OK", Location = new Point(120, 440), Size = new Size(60, 25) };
-            if (this.darkMode)
-            {
-                okButton.FlatStyle = FlatStyle.Flat;
-                okButton.BackColor = ColorTranslator.FromHtml("#161b22");
-                okButton.ForeColor = ColorTranslator.FromHtml("#c9d1d9");
-            }
-            okButton.Click += OkButton_Click;
-            this.Controls.Add(okButton);
-            cancelButton = new Button { Text = "Cancel", Location = new Point(190, 440), Size = new Size(60, 25) };
-            if (this.darkMode)
-            {
-                cancelButton.FlatStyle = FlatStyle.Flat;
-                cancelButton.BackColor = ColorTranslator.FromHtml("#161b22");
-                cancelButton.ForeColor = ColorTranslator.FromHtml("#c9d1d9");
-            }
-            cancelButton.Click += CancelButton_Click;
-            this.Controls.Add(cancelButton);
-
-            // Initialize SelectedColor and update the UI.
+            InitializeForm();
+            CreateControls();
             UpdateColorFromWheel();
             RefreshUI();
         }
 
-        // Called when the color wheel, brightness, or alpha sliders change.
+        private void InitializeForm()
+        {
+            this.FormBorderStyle = FormBorderStyle.FixedDialog;
+            this.MaximizeBox = false;
+            this.MinimizeBox = false;
+            this.StartPosition = FormStartPosition.CenterScreen;
+            this.ClientSize = new Size(480, 480);
+            this.SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint, true);
+            this.UpdateStyles();
+            this.Text = "YourPicker - Color Selector";
+            this.Font = new Font("Segoe UI", 9F);
+
+            if (darkMode)
+            {
+                this.BackColor = ColorTranslator.FromHtml("#0d1117");
+                this.ForeColor = ColorTranslator.FromHtml("#c9d1d9");
+            }
+            else
+            {
+                this.BackColor = ColorTranslator.FromHtml("#f6f8fa");
+                this.ForeColor = ColorTranslator.FromHtml("#24292f");
+            }
+        }
+
+        private void CreateControls()
+        {
+            // Color wheel
+            colorWheel = new ColorWheelControl { Location = new Point(15, 15) };
+            colorWheel.ColorChanged += (s, e) => { UpdateColorFromWheel(); RefreshUI(); };
+            this.Controls.Add(colorWheel);
+
+            // Brightness slider
+            var brightnessLabel = CreateLabel("Brightness", new Point(230, 15), true);
+            this.Controls.Add(brightnessLabel);
+            
+            brightnessBar = new ModernSlider
+            {
+                Location = new Point(245, 40),
+                Size = new Size(30, 180),
+                Minimum = 0,
+                Maximum = 100,
+                Value = 100,
+                DarkMode = darkMode,
+                TrackColor = ColorTranslator.FromHtml("#3aafe6"),
+                Orientation = Orientation.Vertical
+            };
+            brightnessBar.ValueChanged += (s, e) => { if (!isUpdatingSliders) { UpdateColorFromWheel(); RefreshUI(); } };
+            this.Controls.Add(brightnessBar);
+
+            // Opacity slider
+            var alphaLabel = CreateLabel("Opacity", new Point(310, 15), true);
+            this.Controls.Add(alphaLabel);
+            
+            alphaBar = new ModernSlider
+            {
+                Location = new Point(325, 40),
+                Size = new Size(30, 180),
+                Minimum = 0,
+                Maximum = 100,
+                Value = 100,
+                DarkMode = darkMode,
+                TrackColor = ColorTranslator.FromHtml("#3aafe6"),
+                Orientation = Orientation.Vertical
+            };
+            alphaBar.ValueChanged += (s, e) => { if (!isUpdatingSliders) { UpdateColorFromWheel(); RefreshUI(); } };
+            this.Controls.Add(alphaBar);
+
+            // Preview panel with rounded corners
+            previewPanel = new Panel { Location = new Point(375, 15), Size = new Size(90, 200) };
+            previewPanel.Paint += PreviewPanel_Paint;
+            this.Controls.Add(previewPanel);
+
+            // HEX label and copy button
+            hexLabel = new Label 
+            { 
+                Location = new Point(15, 230), 
+                Size = new Size(270, 22), 
+                TextAlign = ContentAlignment.MiddleLeft,
+                Font = new Font("Segoe UI", 10F)
+            };
+            if (darkMode) hexLabel.ForeColor = ColorTranslator.FromHtml("#c9d1d9");
+            this.Controls.Add(hexLabel);
+            
+            hexCopyButton = CreateCopyButton(new Point(290, 228));
+            hexCopyButton.Click += HexCopyLabel_Click;
+            this.Controls.Add(hexCopyButton);
+
+            // RGB label and copy button
+            rgbLabel = new Label 
+            { 
+                Location = new Point(15, 260), 
+                Size = new Size(270, 22), 
+                TextAlign = ContentAlignment.MiddleLeft,
+                Font = new Font("Segoe UI", 10F)
+            };
+            if (darkMode) rgbLabel.ForeColor = ColorTranslator.FromHtml("#c9d1d9");
+            this.Controls.Add(rgbLabel);
+            
+            rgbCopyButton = CreateCopyButton(new Point(290, 258));
+            rgbCopyButton.Click += RgbCopyLabel_Click;
+            this.Controls.Add(rgbCopyButton);
+
+            // RGB Group
+            CreateRGBGroup();
+            
+            // HSV Group
+            CreateHSVGroup();
+
+            // Buttons
+            CreateButtons();
+        }
+
+        private void CreateRGBGroup()
+        {
+            groupBoxRGB = new GroupBox
+            {
+                Text = "RGB",
+                Location = new Point(15, 295),
+                Size = new Size(220, 125),
+                Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold)
+            };
+            if (darkMode)
+            {
+                groupBoxRGB.BackColor = ColorTranslator.FromHtml("#0d1117");
+                groupBoxRGB.ForeColor = ColorTranslator.FromHtml("#c9d1d9");
+            }
+
+            // R slider
+            var labelR = new Label { Text = "R", Location = new Point(10, 28), AutoSize = true };
+            trackBar_R = new ModernSlider
+            {
+                Location = new Point(30, 23),
+                Size = new Size(140, 30),
+                Minimum = 0,
+                Maximum = 255,
+                Value = 0,
+                DarkMode = darkMode,
+                TrackColor = ColorTranslator.FromHtml("#f85149")
+            };
+            trackBar_R.ValueChanged += TrackBarRGB_ValueChanged;
+            
+            labelRValue = new Label { Text = "0", Location = new Point(180, 25), AutoSize = true, Font = new Font("Segoe UI", 8F) };
+            trackBar_R.ValueChanged += (s, e) => labelRValue.Text = trackBar_R.Value.ToString();
+            
+            groupBoxRGB.Controls.AddRange(new Control[] { labelR, trackBar_R, labelRValue });
+
+            // G slider
+            var labelG = new Label { Text = "G", Location = new Point(10, 63), AutoSize = true };
+            trackBar_G = new ModernSlider
+            {
+                Location = new Point(30, 58),
+                Size = new Size(140, 30),
+                Minimum = 0,
+                Maximum = 255,
+                Value = 0,
+                DarkMode = darkMode,
+                TrackColor = ColorTranslator.FromHtml("#3fb950")
+            };
+            trackBar_G.ValueChanged += TrackBarRGB_ValueChanged;
+            
+            labelGValue = new Label { Text = "0", Location = new Point(180, 60), AutoSize = true, Font = new Font("Segoe UI", 8F) };
+            trackBar_G.ValueChanged += (s, e) => labelGValue.Text = trackBar_G.Value.ToString();
+            
+            groupBoxRGB.Controls.AddRange(new Control[] { labelG, trackBar_G, labelGValue });
+
+            // B slider
+            var labelB = new Label { Text = "B", Location = new Point(10, 98), AutoSize = true };
+            trackBar_B = new ModernSlider
+            {
+                Location = new Point(30, 93),
+                Size = new Size(140, 30),
+                Minimum = 0,
+                Maximum = 255,
+                Value = 0,
+                DarkMode = darkMode,
+                TrackColor = ColorTranslator.FromHtml("#1f6feb")
+            };
+            trackBar_B.ValueChanged += TrackBarRGB_ValueChanged;
+            
+            labelBValue = new Label { Text = "0", Location = new Point(180, 95), AutoSize = true, Font = new Font("Segoe UI", 8F) };
+            trackBar_B.ValueChanged += (s, e) => labelBValue.Text = trackBar_B.Value.ToString();
+            
+            groupBoxRGB.Controls.AddRange(new Control[] { labelB, trackBar_B, labelBValue });
+
+            this.Controls.Add(groupBoxRGB);
+        }
+
+        private void CreateHSVGroup()
+        {
+            groupBoxHSV = new GroupBox
+            {
+                Text = "HSV",
+                Location = new Point(245, 295),
+                Size = new Size(220, 125),
+                Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold)
+            };
+            if (darkMode)
+            {
+                groupBoxHSV.BackColor = ColorTranslator.FromHtml("#0d1117");
+                groupBoxHSV.ForeColor = ColorTranslator.FromHtml("#c9d1d9");
+            }
+
+            // H slider
+            var labelH = new Label { Text = "H", Location = new Point(10, 28), AutoSize = true };
+            trackBar_H = new ModernSlider
+            {
+                Location = new Point(30, 23),
+                Size = new Size(140, 30),
+                Minimum = 0,
+                Maximum = 360,
+                Value = 0,
+                DarkMode = darkMode,
+                TrackColor = ColorTranslator.FromHtml("#bc4c00")
+            };
+            trackBar_H.ValueChanged += TrackBarHSV_ValueChanged;
+            
+            labelHValue = new Label { Text = "0°", Location = new Point(180, 25), AutoSize = true, Font = new Font("Segoe UI", 8F) };
+            trackBar_H.ValueChanged += (s, e) => labelHValue.Text = trackBar_H.Value + "°";
+            
+            groupBoxHSV.Controls.AddRange(new Control[] { labelH, trackBar_H, labelHValue });
+
+            // S slider
+            var labelS = new Label { Text = "S", Location = new Point(10, 63), AutoSize = true };
+            trackBar_S = new ModernSlider
+            {
+                Location = new Point(30, 58),
+                Size = new Size(140, 30),
+                Minimum = 0,
+                Maximum = 100,
+                Value = 0,
+                DarkMode = darkMode,
+                TrackColor = ColorTranslator.FromHtml("#a371f7")
+            };
+            trackBar_S.ValueChanged += TrackBarHSV_ValueChanged;
+            
+            labelSValue = new Label { Text = "0%", Location = new Point(180, 60), AutoSize = true, Font = new Font("Segoe UI", 8F) };
+            trackBar_S.ValueChanged += (s, e) => labelSValue.Text = trackBar_S.Value + "%";
+            
+            groupBoxHSV.Controls.AddRange(new Control[] { labelS, trackBar_S, labelSValue });
+
+            // V slider
+            var labelV = new Label { Text = "V", Location = new Point(10, 98), AutoSize = true };
+            trackBar_V = new ModernSlider
+            {
+                Location = new Point(30, 93),
+                Size = new Size(140, 30),
+                Minimum = 0,
+                Maximum = 100,
+                Value = 0,
+                DarkMode = darkMode,
+                TrackColor = ColorTranslator.FromHtml("#f0883e")
+            };
+            trackBar_V.ValueChanged += TrackBarHSV_ValueChanged;
+            
+            labelVValue = new Label { Text = "0%", Location = new Point(180, 95), AutoSize = true, Font = new Font("Segoe UI", 8F) };
+            trackBar_V.ValueChanged += (s, e) => labelVValue.Text = trackBar_V.Value + "%";
+            
+            groupBoxHSV.Controls.AddRange(new Control[] { labelV, trackBar_V, labelVValue });
+
+            this.Controls.Add(groupBoxHSV);
+        }
+
+        private void CreateButtons()
+        {
+            // Pick from Screen button
+            desktopPickButton = new Button 
+            { 
+                Text = "Pick from Screen", 
+                Location = new Point(15, 435), 
+                Size = new Size(140, 32),
+                Font = new Font("Segoe UI", 9F),
+                FlatStyle = FlatStyle.Flat,
+                Cursor = Cursors.Hand
+            };
+            if (darkMode)
+            {
+                desktopPickButton.BackColor = ColorTranslator.FromHtml("#238636");
+                desktopPickButton.ForeColor = Color.White;
+                desktopPickButton.FlatAppearance.BorderColor = ColorTranslator.FromHtml("#2ea043");
+            }
+            else
+            {
+                desktopPickButton.BackColor = ColorTranslator.FromHtml("#2da44e");
+                desktopPickButton.ForeColor = Color.White;
+                desktopPickButton.FlatAppearance.BorderColor = ColorTranslator.FromHtml("#1a7f37");
+            }
+            desktopPickButton.Click += DesktopPickButton_Click;
+            this.Controls.Add(desktopPickButton);
+
+            // OK button
+            okButton = new Button 
+            { 
+                Text = "OK", 
+                Location = new Point(305, 435), 
+                Size = new Size(75, 32),
+                Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+                FlatStyle = FlatStyle.Flat,
+                Cursor = Cursors.Hand
+            };
+            if (darkMode)
+            {
+                okButton.BackColor = ColorTranslator.FromHtml("#1f6feb");
+                okButton.ForeColor = Color.White;
+                okButton.FlatAppearance.BorderColor = ColorTranslator.FromHtml("#388bfd");
+            }
+            else
+            {
+                okButton.BackColor = ColorTranslator.FromHtml("#0969da");
+                okButton.ForeColor = Color.White;
+                okButton.FlatAppearance.BorderColor = ColorTranslator.FromHtml("#0550ae");
+            }
+            okButton.Click += (s, e) => { this.DialogResult = DialogResult.OK; this.Close(); };
+            this.Controls.Add(okButton);
+            
+            // Cancel button
+            cancelButton = new Button 
+            { 
+                Text = "Cancel", 
+                Location = new Point(390, 435), 
+                Size = new Size(75, 32),
+                Font = new Font("Segoe UI", 9F),
+                FlatStyle = FlatStyle.Flat,
+                Cursor = Cursors.Hand
+            };
+            if (darkMode)
+            {
+                cancelButton.BackColor = ColorTranslator.FromHtml("#21262d");
+                cancelButton.ForeColor = ColorTranslator.FromHtml("#c9d1d9");
+                cancelButton.FlatAppearance.BorderColor = ColorTranslator.FromHtml("#30363d");
+            }
+            else
+            {
+                cancelButton.BackColor = ColorTranslator.FromHtml("#f6f8fa");
+                cancelButton.ForeColor = ColorTranslator.FromHtml("#24292f");
+                cancelButton.FlatAppearance.BorderColor = ColorTranslator.FromHtml("#d0d7de");
+            }
+            cancelButton.Click += (s, e) => { this.DialogResult = DialogResult.Cancel; this.Close(); };
+            this.Controls.Add(cancelButton);
+        }
+
+        private Label CreateLabel(string text, Point location, bool bold = false)
+        {
+            var label = new Label 
+            { 
+                Text = text, 
+                Location = location, 
+                AutoSize = true,
+                Font = bold ? new Font("Segoe UI Semibold", 9F, FontStyle.Bold) : new Font("Segoe UI", 9F)
+            };
+            if (darkMode) label.ForeColor = ColorTranslator.FromHtml("#c9d1d9");
+            return label;
+        }
+
+
+
+        private Button CreateCopyButton(Point location)
+        {
+            var button = new Button
+            {
+                Text = "Copy",
+                Location = location,
+                Size = new Size(55, 26),
+                Cursor = Cursors.Hand,
+                Font = new Font("Segoe UI", 8F),
+                FlatStyle = FlatStyle.Flat
+            };
+            
+            if (darkMode)
+            {
+                button.BackColor = ColorTranslator.FromHtml("#21262d");
+                button.ForeColor = ColorTranslator.FromHtml("#c9d1d9");
+                button.FlatAppearance.BorderColor = ColorTranslator.FromHtml("#30363d");
+            }
+            else
+            {
+                button.BackColor = ColorTranslator.FromHtml("#f6f8fa");
+                button.ForeColor = ColorTranslator.FromHtml("#24292f");
+                button.FlatAppearance.BorderColor = ColorTranslator.FromHtml("#d0d7de");
+            }
+            
+            return button;
+        }
+
+        private void PreviewPanel_Paint(object sender, PaintEventArgs e)
+        {
+            using (var path = new GraphicsPath())
+            {
+                int radius = 8;
+                var rect = new Rectangle(0, 0, previewPanel.Width - 1, previewPanel.Height - 1);
+                path.AddArc(rect.X, rect.Y, radius, radius, 180, 90);
+                path.AddArc(rect.Right - radius, rect.Y, radius, radius, 270, 90);
+                path.AddArc(rect.Right - radius, rect.Bottom - radius, radius, radius, 0, 90);
+                path.AddArc(rect.X, rect.Bottom - radius, radius, radius, 90, 90);
+                path.CloseFigure();
+                previewPanel.Region = new Region(path);
+                
+                using (var brush = new SolidBrush(SelectedColor))
+                {
+                    e.Graphics.FillPath(brush, path);
+                }
+                using (var pen = new Pen(darkMode ? ColorTranslator.FromHtml("#30363d") : ColorTranslator.FromHtml("#d0d7de"), 2))
+                {
+                    e.Graphics.DrawPath(pen, path);
+                }
+                
+                // Draw outer border (black) for better definition
+                using (var outerPath = new GraphicsPath())
+                {
+                    var outerRect = new Rectangle(1, 1, previewPanel.Width - 3, previewPanel.Height - 3);
+                    outerPath.AddArc(outerRect.X, outerRect.Y, radius, radius, 180, 90);
+                    outerPath.AddArc(outerRect.Right - radius, outerRect.Y, radius, radius, 270, 90);
+                    outerPath.AddArc(outerRect.Right - radius, outerRect.Bottom - radius, radius, radius, 0, 90);
+                    outerPath.AddArc(outerRect.X, outerRect.Bottom - radius, radius, radius, 90, 90);
+                    outerPath.CloseFigure();
+                    
+                    using (var outerPen = new Pen(Color.Black, 1))
+                    {
+                        e.Graphics.DrawPath(outerPen, outerPath);
+                    }
+                }
+            }
+        }
+
         private void UpdateColorFromWheel()
         {
             double brightness = brightnessBar.Value / 100.0;
@@ -557,36 +687,31 @@ namespace YourPicker
             SelectedColor = Color.FromArgb(alpha, baseColor.R, baseColor.G, baseColor.B);
         }
 
-        // Refresh all UI elements (preview panel, labels, and slider positions).
         private void RefreshUI()
         {
             isUpdatingSliders = true;
 
-            // Update RGB sliders.
             trackBar_R.Value = SelectedColor.R;
             trackBar_G.Value = SelectedColor.G;
             trackBar_B.Value = SelectedColor.B;
 
-            // Convert current color to HSV.
             double h, s, v;
-            RgbToHsv(SelectedColor, out h, out s, out v);
+            ColorUtils.RgbToHsv(SelectedColor, out h, out s, out v);
             trackBar_H.Value = (int)Math.Round(h);
             trackBar_S.Value = (int)Math.Round(s * 100);
             trackBar_V.Value = (int)Math.Round(v * 100);
 
-            // Update brightness slider and color wheel.
             brightnessBar.Value = (int)Math.Round(v * 100);
             colorWheel.SetSelection(h, s);
 
-            // Update preview panel and labels.
-            previewPanel.BackColor = SelectedColor;
-            previewPanel.Invalidate(); // Force repaint.
-
+            previewPanel.Invalidate();
+            
             string hexColor = ColorUtils.ColorToHex(SelectedColor);
             string rgbColor = ColorUtils.ColorToRgb(SelectedColor);
-
+            
             hexLabel.Text = $"HEX: {hexColor}";
             rgbLabel.Text = $"RGB: {rgbColor}";
+            
             if (Plugin.gReturnValue.ToUpper() == "RGB")
                 Plugin.UpdateLastColor(rgbColor);
             else
@@ -595,26 +720,16 @@ namespace YourPicker
             isUpdatingSliders = false;
         }
 
-
-        // Converts an RGB color to HSV.
-        private void RgbToHsv(Color color, out double hue, out double saturation, out double value)
-        {
-            ColorUtils.RgbToHsv(color, out hue, out saturation, out value);
-        }
-
-        // Event handler for changes in any of the RGB sliders.
         private void TrackBarRGB_ValueChanged(object sender, EventArgs e)
         {
             if (!isUpdatingSliders)
             {
                 isUpdatingSliders = true;
-                int r = trackBar_R.Value;
-                int g = trackBar_G.Value;
-                int b = trackBar_B.Value;
                 int alpha = (int)(alphaBar.Value / 100.0 * 255);
-                SelectedColor = Color.FromArgb(alpha, r, g, b);
+                SelectedColor = Color.FromArgb(alpha, trackBar_R.Value, trackBar_G.Value, trackBar_B.Value);
+                
                 double h, s, v;
-                RgbToHsv(SelectedColor, out h, out s, out v);
+                ColorUtils.RgbToHsv(SelectedColor, out h, out s, out v);
                 trackBar_H.Value = (int)Math.Round(h);
                 trackBar_S.Value = (int)Math.Round(s * 100);
                 trackBar_V.Value = (int)Math.Round(v * 100);
@@ -625,7 +740,6 @@ namespace YourPicker
             }
         }
 
-        // Event handler for changes in any of the HSV sliders.
         private void TrackBarHSV_ValueChanged(object sender, EventArgs e)
         {
             if (!isUpdatingSliders)
@@ -651,14 +765,14 @@ namespace YourPicker
         {
             string hexColor = hexLabel.Text.Replace("HEX: ", "");
             Clipboard.SetText(hexColor);
-            MessageBox.Show("Copied " + hexColor + " to clipboard.", "Copied", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show($"Copied {hexColor} to clipboard.", "Copied", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         private void RgbCopyLabel_Click(object sender, EventArgs e)
         {
             string rgbText = rgbLabel.Text;
             Clipboard.SetText(rgbText);
-            MessageBox.Show("Copied " + rgbText + " to clipboard.", "Copied", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show($"Copied {rgbText} to clipboard.", "Copied", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         private void DesktopPickButton_Click(object sender, EventArgs e)
@@ -669,7 +783,7 @@ namespace YourPicker
                 {
                     Color picked = dpForm.PickedColor;
                     double hue, saturation, value;
-                    RgbToHsv(picked, out hue, out saturation, out value);
+                    ColorUtils.RgbToHsv(picked, out hue, out saturation, out value);
                     colorWheel.SetSelection(hue, saturation);
                     brightnessBar.Value = (int)(value * 100);
                     alphaBar.Value = (int)(picked.A / 255.0 * 100);
@@ -677,18 +791,6 @@ namespace YourPicker
                     RefreshUI();
                 }
             }
-        }
-
-        private void OkButton_Click(object sender, EventArgs e)
-        {
-            this.DialogResult = DialogResult.OK;
-            this.Close();
-        }
-
-        private void CancelButton_Click(object sender, EventArgs e)
-        {
-            this.DialogResult = DialogResult.Cancel;
-            this.Close();
         }
     }
 }

@@ -88,9 +88,6 @@
     <Compile Include="MagnifierForm.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="ModernColorPickerForm.cs">
-      <SubType>Form</SubType>
-    </Compile>
     <Compile Include="ModernSlider.cs">
       <SubType>Component</SubType>
     </Compile>
