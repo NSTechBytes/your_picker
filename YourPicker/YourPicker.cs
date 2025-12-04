@@ -152,7 +152,7 @@ namespace YourPicker
 
 
     // DESKTOP COLOR PICKER FORM (DPI-Aware) with Square Magnifier.
-        public class DesktopColorPickerForm : Form
+    public class DesktopColorPickerForm : Form
     {
         public Color PickedColor { get; private set; }
         private MagnifierForm magnifier; // For the magnified preview.
@@ -581,10 +581,10 @@ namespace YourPicker
             // Update preview panel and labels.
             previewPanel.BackColor = SelectedColor;
             previewPanel.Invalidate(); // Force repaint.
-            
+
             string hexColor = ColorUtils.ColorToHex(SelectedColor);
             string rgbColor = ColorUtils.ColorToRgb(SelectedColor);
-            
+
             hexLabel.Text = $"HEX: {hexColor}";
             rgbLabel.Text = $"RGB: {rgbColor}";
             if (Plugin.gReturnValue.ToUpper() == "RGB")
@@ -689,131 +689,6 @@ namespace YourPicker
         {
             this.DialogResult = DialogResult.Cancel;
             this.Close();
-        }
-    }
-
-    // PLUGIN CLASS for Rainmeter integration.
-    public static class Plugin
-    {
-        public static string gReturnValue = "Hex"; // Default format.
-        public static string gFinishAction = "";
-        public static string gLastColor = "";
-        public static string myName = "";
-        public static bool gDarkMode = false; // Dark mode flag.
-        public static IntPtr gRainmeter = IntPtr.Zero;
-
-        [DllExport]
-        public static void Initialize(ref IntPtr data, IntPtr rm)
-        {
-            data = IntPtr.Zero;
-            gRainmeter = rm;
-        }
-
-        [DllExport]
-        public static void Finalize(IntPtr data)
-        {
-        }
-
-        [DllExport]
-        public static void Reload(IntPtr data, IntPtr rm, ref double maxValue)
-        {
-            Rainmeter.API api = new Rainmeter.API(rm);
-            gReturnValue = api.ReadString("ReturnValue", "Hex");
-            myName = api.GetMeasureName();
-            gFinishAction = api.ReadString("OnFinishAction", "");
-            // Read DarkMode setting from Rainmeter. If DarkMode=1 then enable dark mode.
-            gDarkMode = api.ReadInt("DarkMode", 0) == 1;
-            maxValue = 1.0;
-        }
-
-        [DllExport]
-        public static double Update(IntPtr data)
-        {
-            return 0.0;
-        }
-
-        // Launch the color picker or magnifier in a separate STA thread.
-        [DllExport]
-        public static void ExecuteBang(IntPtr data, IntPtr args)
-        {
-            string arguments = Marshal.PtrToStringUni(args);
-            if (arguments.Equals("-cp", StringComparison.OrdinalIgnoreCase))
-            {
-                System.Threading.Thread t = new System.Threading.Thread(() =>
-                {
-                    // Launch the full color picker GUI.
-                    ColorPickerForm picker = new ColorPickerForm(gDarkMode);
-                    Application.Run(picker);
-                    if (picker.DialogResult == DialogResult.OK)
-                    {
-                        Color selected = picker.SelectedColor;
-                        if (gReturnValue.ToUpper() == "RGB")
-                            gLastColor = ColorUtils.ColorToRgb(selected);
-                        else
-                            gLastColor = ColorUtils.ColorToHex(selected);
-                        Rainmeter.API api = new Rainmeter.API(gRainmeter);
-                        api.Execute("[!UpdateMeasure MeasureYourPicker]");
-                        if (!string.IsNullOrEmpty(gFinishAction))
-                        {
-                            try
-                            {
-                                api.Execute(gFinishAction);
-                            }
-                            catch { }
-                        }
-                    }
-                });
-                t.SetApartmentState(System.Threading.ApartmentState.STA);
-                t.Start();
-            }
-            else if (arguments.Equals("-mp", StringComparison.OrdinalIgnoreCase))
-            {
-                // In -mp mode, show only the magnifier (DesktopColorPickerForm) to select a color.
-                System.Threading.Thread t = new System.Threading.Thread(() =>
-                {
-                    using (DesktopColorPickerForm dpForm = new DesktopColorPickerForm())
-                    {
-                        Application.Run(dpForm);
-                        if (dpForm.DialogResult == DialogResult.OK)
-                        {
-                            Color selected = dpForm.PickedColor;
-                            string newColor;
-                            if (gReturnValue.ToUpper() == "RGB")
-                                newColor = ColorUtils.ColorToRgb(selected);
-                            else
-                                newColor = ColorUtils.ColorToHex(selected);
-                            // First update the plugin's value.
-                            Plugin.UpdateLastColor(newColor);
-                            Rainmeter.API api = new Rainmeter.API(gRainmeter);
-                            // Update the measure.
-                            api.Execute($"!UpdateMeasure \"{myName}\"");
-                            // Then execute on finish action.
-                            if (!string.IsNullOrEmpty(gFinishAction))
-                            {
-                                try
-                                {
-                                    api.Execute(gFinishAction);
-                                }
-                                catch { }
-                            }
-                        }
-                    }
-                });
-                t.SetApartmentState(System.Threading.ApartmentState.STA);
-                t.Start();
-            }
-        }
-
-        // Returns the current color as a string.
-        [DllExport]
-        public static IntPtr GetString(IntPtr data)
-        {
-            return Marshal.StringToHGlobalUni(gLastColor);
-        }
-
-        public static void UpdateLastColor(string newColor)
-        {
-            gLastColor = newColor;
         }
     }
 }
