@@ -121,7 +121,7 @@ namespace YourPicker
                 Location = new Point(15, 230), 
                 Size = new Size(270, 22), 
                 TextAlign = ContentAlignment.MiddleLeft,
-                Font = new Font("Consolas", 10F)
+                Font = new Font("Segoe UI", 10F)
             };
             if (darkMode) hexLabel.ForeColor = ColorTranslator.FromHtml("#c9d1d9");
             this.Controls.Add(hexLabel);
@@ -136,7 +136,7 @@ namespace YourPicker
                 Location = new Point(15, 260), 
                 Size = new Size(270, 22), 
                 TextAlign = ContentAlignment.MiddleLeft,
-                Font = new Font("Consolas", 10F)
+                Font = new Font("Segoe UI", 10F)
             };
             if (darkMode) rgbLabel.ForeColor = ColorTranslator.FromHtml("#c9d1d9");
             this.Controls.Add(rgbLabel);
@@ -175,7 +175,7 @@ namespace YourPicker
             trackBar_R = new ModernSlider
             {
                 Location = new Point(30, 23),
-                Size = new Size(150, 30),
+                Size = new Size(140, 30),
                 Minimum = 0,
                 Maximum = 255,
                 Value = 0,
@@ -184,7 +184,7 @@ namespace YourPicker
             };
             trackBar_R.ValueChanged += TrackBarRGB_ValueChanged;
             
-            labelRValue = new Label { Text = "0", Location = new Point(185, 25), AutoSize = true, Font = new Font("Consolas", 8F) };
+            labelRValue = new Label { Text = "0", Location = new Point(180, 25), AutoSize = true, Font = new Font("Segoe UI", 8F) };
             trackBar_R.ValueChanged += (s, e) => labelRValue.Text = trackBar_R.Value.ToString();
             
             groupBoxRGB.Controls.AddRange(new Control[] { labelR, trackBar_R, labelRValue });
@@ -194,7 +194,7 @@ namespace YourPicker
             trackBar_G = new ModernSlider
             {
                 Location = new Point(30, 58),
-                Size = new Size(150, 30),
+                Size = new Size(140, 30),
                 Minimum = 0,
                 Maximum = 255,
                 Value = 0,
@@ -203,7 +203,7 @@ namespace YourPicker
             };
             trackBar_G.ValueChanged += TrackBarRGB_ValueChanged;
             
-            labelGValue = new Label { Text = "0", Location = new Point(185, 60), AutoSize = true, Font = new Font("Consolas", 8F) };
+            labelGValue = new Label { Text = "0", Location = new Point(180, 60), AutoSize = true, Font = new Font("Segoe UI", 8F) };
             trackBar_G.ValueChanged += (s, e) => labelGValue.Text = trackBar_G.Value.ToString();
             
             groupBoxRGB.Controls.AddRange(new Control[] { labelG, trackBar_G, labelGValue });
@@ -213,7 +213,7 @@ namespace YourPicker
             trackBar_B = new ModernSlider
             {
                 Location = new Point(30, 93),
-                Size = new Size(150, 30),
+                Size = new Size(140, 30),
                 Minimum = 0,
                 Maximum = 255,
                 Value = 0,
@@ -222,7 +222,7 @@ namespace YourPicker
             };
             trackBar_B.ValueChanged += TrackBarRGB_ValueChanged;
             
-            labelBValue = new Label { Text = "0", Location = new Point(185, 95), AutoSize = true, Font = new Font("Consolas", 8F) };
+            labelBValue = new Label { Text = "0", Location = new Point(180, 95), AutoSize = true, Font = new Font("Segoe UI", 8F) };
             trackBar_B.ValueChanged += (s, e) => labelBValue.Text = trackBar_B.Value.ToString();
             
             groupBoxRGB.Controls.AddRange(new Control[] { labelB, trackBar_B, labelBValue });
@@ -250,7 +250,7 @@ namespace YourPicker
             trackBar_H = new ModernSlider
             {
                 Location = new Point(30, 23),
-                Size = new Size(150, 30),
+                Size = new Size(140, 30),
                 Minimum = 0,
                 Maximum = 360,
                 Value = 0,
@@ -259,7 +259,7 @@ namespace YourPicker
             };
             trackBar_H.ValueChanged += TrackBarHSV_ValueChanged;
             
-            labelHValue = new Label { Text = "0°", Location = new Point(185, 25), AutoSize = true, Font = new Font("Consolas", 8F) };
+            labelHValue = new Label { Text = "0°", Location = new Point(180, 25), AutoSize = true, Font = new Font("Segoe UI", 8F) };
             trackBar_H.ValueChanged += (s, e) => labelHValue.Text = trackBar_H.Value + "°";
             
             groupBoxHSV.Controls.AddRange(new Control[] { labelH, trackBar_H, labelHValue });
@@ -269,7 +269,7 @@ namespace YourPicker
             trackBar_S = new ModernSlider
             {
                 Location = new Point(30, 58),
-                Size = new Size(150, 30),
+                Size = new Size(140, 30),
                 Minimum = 0,
                 Maximum = 100,
                 Value = 0,
@@ -278,7 +278,7 @@ namespace YourPicker
             };
             trackBar_S.ValueChanged += TrackBarHSV_ValueChanged;
             
-            labelSValue = new Label { Text = "0%", Location = new Point(185, 60), AutoSize = true, Font = new Font("Consolas", 8F) };
+            labelSValue = new Label { Text = "0%", Location = new Point(180, 60), AutoSize = true, Font = new Font("Segoe UI", 8F) };
             trackBar_S.ValueChanged += (s, e) => labelSValue.Text = trackBar_S.Value + "%";
             
             groupBoxHSV.Controls.AddRange(new Control[] { labelS, trackBar_S, labelSValue });
@@ -288,7 +288,7 @@ namespace YourPicker
             trackBar_V = new ModernSlider
             {
                 Location = new Point(30, 93),
-                Size = new Size(150, 30),
+                Size = new Size(140, 30),
                 Minimum = 0,
                 Maximum = 100,
                 Value = 0,
@@ -297,7 +297,7 @@ namespace YourPicker
             };
             trackBar_V.ValueChanged += TrackBarHSV_ValueChanged;
             
-            labelVValue = new Label { Text = "0%", Location = new Point(185, 95), AutoSize = true, Font = new Font("Consolas", 8F) };
+            labelVValue = new Label { Text = "0%", Location = new Point(180, 95), AutoSize = true, Font = new Font("Segoe UI", 8F) };
             trackBar_V.ValueChanged += (s, e) => labelVValue.Text = trackBar_V.Value + "%";
             
             groupBoxHSV.Controls.AddRange(new Control[] { labelV, trackBar_V, labelVValue });
@@ -310,7 +310,7 @@ namespace YourPicker
             // Pick from Screen button
             desktopPickButton = new Button 
             { 
-                Text = "🎨 Pick from Screen", 
+                Text = "Pick from Screen", 
                 Location = new Point(15, 435), 
                 Size = new Size(140, 32),
                 Font = new Font("Segoe UI", 9F),
@@ -335,7 +335,7 @@ namespace YourPicker
             // OK button
             okButton = new Button 
             { 
-                Text = "✓ OK", 
+                Text = "OK", 
                 Location = new Point(305, 435), 
                 Size = new Size(75, 32),
                 Font = new Font("Segoe UI", 9F, FontStyle.Bold),
@@ -360,7 +360,7 @@ namespace YourPicker
             // Cancel button
             cancelButton = new Button 
             { 
-                Text = "✕ Cancel", 
+                Text = "Cancel", 
                 Location = new Point(390, 435), 
                 Size = new Size(75, 32),
                 Font = new Font("Segoe UI", 9F),
