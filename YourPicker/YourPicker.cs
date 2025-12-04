@@ -168,9 +168,10 @@ namespace YourPicker
     public class MagnifierForm : Form
     {
         private Timer timer;
-        public int ZoomFactor { get; set; } = 4;
-        public int CaptureSize { get; set; } = 40;
+        public int ZoomFactor { get; set; } = 3;
+        public int CaptureSize { get; set; } = 30;
         private Bitmap magnifiedImage;
+        private int squareSize;
 
         // Import SetWindowPos API.
         [DllImport("user32.dll", SetLastError = true)]
@@ -197,12 +198,14 @@ namespace YourPicker
             this.SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer, true);
 
             this.FormBorderStyle = FormBorderStyle.None;
-            this.Size = new Size(CaptureSize * ZoomFactor, CaptureSize * ZoomFactor);
+            
+            // Calculate square size and set client size only.
+            squareSize = CaptureSize * ZoomFactor;
+            this.ClientSize = new Size(squareSize, squareSize);
+            this.MinimumSize = new Size(squareSize, squareSize);
+            this.MaximumSize = new Size(squareSize, squareSize);
 
-            // Create a circular region for a round magnifier.
-            GraphicsPath gp = new GraphicsPath();
-            gp.AddEllipse(new Rectangle(0, 0, this.Width, this.Height));
-            this.Region = new Region(gp);
+            // Rectangular magnifier (no region needed).
 
             this.StartPosition = FormStartPosition.Manual;
             this.TopMost = true;
@@ -217,6 +220,16 @@ namespace YourPicker
             timer.Interval = 100; // Update every 100 ms.
             timer.Tick += Timer_Tick;
             timer.Start();
+        }
+
+        // Override OnResize to enforce square dimensions.
+        protected override void OnResize(EventArgs e)
+        {
+            base.OnResize(e);
+            if (this.ClientSize.Width != squareSize || this.ClientSize.Height != squareSize)
+            {
+                this.ClientSize = new Size(squareSize, squareSize);
+            }
         }
 
         // Override CreateParams to enforce topmost behavior.
@@ -261,14 +274,20 @@ namespace YourPicker
             if (magnifiedImage != null)
             {
                 e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-                e.Graphics.DrawImage(magnifiedImage, 0, 0, this.Width, this.Height);
+                // Draw the magnified image filling the entire client area.
+                e.Graphics.DrawImage(magnifiedImage, 0, 0, this.ClientSize.Width, this.ClientSize.Height);
                 // Draw a cross in the center of the magnifier.
-                int centerX = this.Width / 2;
-                int centerY = this.Height / 2;
+                int centerX = this.ClientSize.Width / 2;
+                int centerY = this.ClientSize.Height / 2;
                 using (Pen crossPen = new Pen(Color.White, 2))
                 {
-                    e.Graphics.DrawLine(crossPen, 0, centerY, this.Width, centerY);
-                    e.Graphics.DrawLine(crossPen, centerX, 0, centerX, this.Height);
+                    e.Graphics.DrawLine(crossPen, 0, centerY, this.ClientSize.Width, centerY);
+                    e.Graphics.DrawLine(crossPen, centerX, 0, centerX, this.ClientSize.Height);
+                }
+                // Draw a border around the magnifier.
+                using (Pen borderPen = new Pen(Color.White, 3))
+                {
+                    e.Graphics.DrawRectangle(borderPen, 1, 1, this.ClientSize.Width - 3, this.ClientSize.Height - 3);
                 }
             }
         }
