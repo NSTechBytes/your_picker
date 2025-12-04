@@ -651,7 +651,7 @@ namespace YourPicker
             SelectedColor = Color.FromArgb(alpha, baseColor.R, baseColor.G, baseColor.B);
         }
 
-        private void RefreshUI()
+        private void RefreshUI(bool updateHSVSliders = true)
         {
             isUpdatingSliders = true;
 
@@ -659,14 +659,17 @@ namespace YourPicker
             trackBar_G.Value = SelectedColor.G;
             trackBar_B.Value = SelectedColor.B;
 
-            double h, s, v;
-            ColorUtils.RgbToHsv(SelectedColor, out h, out s, out v);
-            trackBar_H.Value = (int)Math.Round(h);
-            trackBar_S.Value = (int)Math.Round(s * 100);
-            trackBar_V.Value = (int)Math.Round(v * 100);
+            if (updateHSVSliders)
+            {
+                double h, s, v;
+                ColorUtils.RgbToHsv(SelectedColor, out h, out s, out v);
+                trackBar_H.Value = (int)Math.Round(h);
+                trackBar_S.Value = (int)Math.Round(s * 100);
+                trackBar_V.Value = (int)Math.Round(v * 100);
 
-            brightnessBar.Value = (int)Math.Round(v * 100);
-            colorWheel.SetSelection(h, s);
+                brightnessBar.Value = (int)Math.Round(v * 100);
+                colorWheel.SetSelection(h, s);
+            }
 
             previewPanel.Invalidate();
             
@@ -692,13 +695,6 @@ namespace YourPicker
                 int alpha = (int)(alphaBar.Value / 100.0 * 255);
                 SelectedColor = Color.FromArgb(alpha, trackBar_R.Value, trackBar_G.Value, trackBar_B.Value);
                 
-                double h, s, v;
-                ColorUtils.RgbToHsv(SelectedColor, out h, out s, out v);
-                trackBar_H.Value = (int)Math.Round(h);
-                trackBar_S.Value = (int)Math.Round(s * 100);
-                trackBar_V.Value = (int)Math.Round(v * 100);
-                brightnessBar.Value = (int)Math.Round(v * 100);
-                colorWheel.SetSelection(h, s);
                 RefreshUI();
                 isUpdatingSliders = false;
             }
@@ -715,12 +711,12 @@ namespace YourPicker
                 Color baseColor = ColorWheelControl.ColorFromHSV(h, s, v);
                 int alpha = (int)(alphaBar.Value / 100.0 * 255);
                 SelectedColor = Color.FromArgb(alpha, baseColor.R, baseColor.G, baseColor.B);
-                trackBar_R.Value = SelectedColor.R;
-                trackBar_G.Value = SelectedColor.G;
-                trackBar_B.Value = SelectedColor.B;
+                
+                // Update other controls but NOT the HSV sliders we are currently dragging
                 brightnessBar.Value = (int)Math.Round(v * 100);
                 colorWheel.SetSelection(h, s);
-                RefreshUI();
+                
+                RefreshUI(false);
                 isUpdatingSliders = false;
             }
         }
