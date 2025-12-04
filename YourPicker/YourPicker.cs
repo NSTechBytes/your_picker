@@ -7,12 +7,12 @@ using Rainmeter;
 
 namespace YourPicker
 {
-    // CUSTOM COLOR WHEEL CONTROL
+    // CUSTOM COLOR WHEEL CONTROL (SQUARE HUE-SATURATION MAP)
     public class ColorWheelControl : Control
     {
 
         private Bitmap colorWheel;
-        private int wheelSize = 200; // Reduced from 300.
+        private int wheelSize = 200;
         private bool isDragging = false;
 
         // Selected hue and saturation.
@@ -61,23 +61,14 @@ namespace YourPicker
 
         private void UpdateColorFromPoint(Point point)
         {
-            int centerX = this.Width / 2;
-            int centerY = this.Height / 2;
-            int dx = point.X - centerX;
-            int dy = point.Y - centerY;
-            double distance = Math.Sqrt(dx * dx + dy * dy);
+            int x = Math.Max(0, Math.Min(point.X, this.Width - 1));
+            int y = Math.Max(0, Math.Min(point.Y, this.Height - 1));
 
-            if (distance <= wheelSize / 2)
-            {
-                double angle = Math.Atan2(dy, dx);
-                if (angle < 0)
-                    angle += 2 * Math.PI;
-                SelectedHue = angle * 180 / Math.PI; // 0-360
-                SelectedSaturation = distance / (wheelSize / 2); // 0-1
+            SelectedHue = (double)x / (this.Width - 1) * 360.0;
+            SelectedSaturation = 1.0 - ((double)y / (this.Height - 1));
 
-                ColorChanged?.Invoke(this, EventArgs.Empty);
-                Invalidate(); // Redraw to update the indicator.
-            }
+            ColorChanged?.Invoke(this, EventArgs.Empty);
+            Invalidate(); // Redraw to update the indicator.
         }
 
         // External update of selection.
@@ -91,29 +82,16 @@ namespace YourPicker
         private void CreateColorWheel()
         {
             colorWheel = new Bitmap(wheelSize, wheelSize);
-            int radius = wheelSize / 2;
             for (int x = 0; x < wheelSize; x++)
             {
                 for (int y = 0; y < wheelSize; y++)
                 {
-                    int dx = x - radius;
-                    int dy = y - radius;
-                    double distance = Math.Sqrt(dx * dx + dy * dy);
-                    if (distance <= radius)
-                    {
-                        double angle = Math.Atan2(dy, dx);
-                        if (angle < 0)
-                            angle += 2 * Math.PI;
-                        double hue = angle * 180 / Math.PI;
-                        double saturation = distance / radius;
-                        // Generate color with full brightness.
-                        Color c = ColorFromHSV(hue, saturation, 1.0);
-                        colorWheel.SetPixel(x, y, c);
-                    }
-                    else
-                    {
-                        colorWheel.SetPixel(x, y, Color.Transparent);
-                    }
+                    double hue = (double)x / (wheelSize - 1) * 360.0;
+                    double saturation = 1.0 - ((double)y / (wheelSize - 1));
+                    
+                    // Generate color with full brightness.
+                    Color c = ColorFromHSV(hue, saturation, 1.0);
+                    colorWheel.SetPixel(x, y, c);
                 }
             }
         }
@@ -124,19 +102,21 @@ namespace YourPicker
             if (colorWheel != null)
                 e.Graphics.DrawImage(colorWheel, 0, 0);
 
-            int radius = wheelSize / 2;
             int indicatorSize = 10;
-            int selectedX = radius + (int)(SelectedSaturation * radius * Math.Cos(SelectedHue * Math.PI / 180));
-            int selectedY = radius + (int)(SelectedSaturation * radius * Math.Sin(SelectedHue * Math.PI / 180));
+            int selectedX = (int)(SelectedHue / 360.0 * (this.Width - 1));
+            int selectedY = (int)((1.0 - SelectedSaturation) * (this.Height - 1));
+            
             Rectangle indicatorRect = new Rectangle(selectedX - indicatorSize / 2, selectedY - indicatorSize / 2, indicatorSize, indicatorSize);
-            using (SolidBrush brush = new SolidBrush(SelectedColor))
-            {
-                e.Graphics.FillEllipse(brush, indicatorRect);
-            }
-            // Draw a white border around the indicator.
+            
+            // Draw a white border around the indicator for visibility on dark colors
             using (Pen indicatorPen = new Pen(Color.White, 2))
             {
                 e.Graphics.DrawEllipse(indicatorPen, indicatorRect);
+            }
+            // Draw a black inner border for visibility on light colors
+            using (Pen innerPen = new Pen(Color.Black, 1))
+            {
+                e.Graphics.DrawEllipse(innerPen, indicatorRect);
             }
         }
 
