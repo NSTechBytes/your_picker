@@ -146,22 +146,7 @@ namespace YourPicker
         // Helper method: Convert HSV values to a Color.
         public static Color ColorFromHSV(double hue, double saturation, double value)
         {
-            int hi = Convert.ToInt32(Math.Floor(hue / 60)) % 6;
-            double f = hue / 60 - Math.Floor(hue / 60);
-            value = value * 255;
-            int v = Convert.ToInt32(value);
-            int p = Convert.ToInt32(value * (1 - saturation));
-            int q = Convert.ToInt32(value * (1 - f * saturation));
-            int t = Convert.ToInt32(value * (1 - (1 - f) * saturation));
-            switch (hi)
-            {
-                case 0: return Color.FromArgb(v, t, p);
-                case 1: return Color.FromArgb(q, v, p);
-                case 2: return Color.FromArgb(p, v, t);
-                case 3: return Color.FromArgb(p, q, v);
-                case 4: return Color.FromArgb(t, p, v);
-                default: return Color.FromArgb(v, p, q);
-            }
+            return ColorUtils.ColorFromHSV(hue, saturation, value);
         }
     }
 
@@ -596,18 +581,10 @@ namespace YourPicker
             // Update preview panel and labels.
             previewPanel.BackColor = SelectedColor;
             previewPanel.Invalidate(); // Force repaint.
-            string hexColor;
-            string rgbColor;
-            if (SelectedColor.A == 255)
-            {
-                hexColor = $"{SelectedColor.R:X2}{SelectedColor.G:X2}{SelectedColor.B:X2}";
-                rgbColor = $"{SelectedColor.R},{SelectedColor.G},{SelectedColor.B}";
-            }
-            else
-            {
-                hexColor = $"{SelectedColor.R:X2}{SelectedColor.G:X2}{SelectedColor.B:X2}{SelectedColor.A:X2}";
-                rgbColor = $"{SelectedColor.R},{SelectedColor.G},{SelectedColor.B},{SelectedColor.A}";
-            }
+            
+            string hexColor = ColorUtils.ColorToHex(SelectedColor);
+            string rgbColor = ColorUtils.ColorToRgb(SelectedColor);
+            
             hexLabel.Text = $"HEX: {hexColor}";
             rgbLabel.Text = $"RGB: {rgbColor}";
             if (Plugin.gReturnValue.ToUpper() == "RGB")
@@ -618,27 +595,11 @@ namespace YourPicker
             isUpdatingSliders = false;
         }
 
+
         // Converts an RGB color to HSV.
         private void RgbToHsv(Color color, out double hue, out double saturation, out double value)
         {
-            double r = color.R / 255.0;
-            double g = color.G / 255.0;
-            double b = color.B / 255.0;
-            double max = Math.Max(r, Math.Max(g, b));
-            double min = Math.Min(r, Math.Min(g, b));
-            double delta = max - min;
-            if (delta == 0)
-                hue = 0;
-            else if (max == r)
-                hue = 60 * (((g - b) / delta) % 6);
-            else if (max == g)
-                hue = 60 * (((b - r) / delta) + 2);
-            else
-                hue = 60 * (((r - g) / delta) + 4);
-            if (hue < 0)
-                hue += 360;
-            saturation = (max == 0) ? 0 : delta / max;
-            value = max;
+            ColorUtils.RgbToHsv(color, out hue, out saturation, out value);
         }
 
         // Event handler for changes in any of the RGB sliders.
@@ -787,16 +748,9 @@ namespace YourPicker
                     {
                         Color selected = picker.SelectedColor;
                         if (gReturnValue.ToUpper() == "RGB")
-                        {
-                            gLastColor = $"{selected.R},{selected.G},{selected.B}";
-                        }
+                            gLastColor = ColorUtils.ColorToRgb(selected);
                         else
-                        {
-                            if (selected.A < 255)
-                                gLastColor = $"{selected.R:X2}{selected.G:X2}{selected.B:X2}{selected.A:X2}";
-                            else
-                                gLastColor = $"{selected.R:X2}{selected.G:X2}{selected.B:X2}";
-                        }
+                            gLastColor = ColorUtils.ColorToHex(selected);
                         Rainmeter.API api = new Rainmeter.API(gRainmeter);
                         api.Execute("[!UpdateMeasure MeasureYourPicker]");
                         if (!string.IsNullOrEmpty(gFinishAction))
@@ -825,16 +779,9 @@ namespace YourPicker
                             Color selected = dpForm.PickedColor;
                             string newColor;
                             if (gReturnValue.ToUpper() == "RGB")
-                            {
-                                newColor = $"{selected.R},{selected.G},{selected.B}";
-                            }
+                                newColor = ColorUtils.ColorToRgb(selected);
                             else
-                            {
-                                if (selected.A < 255)
-                                    newColor = $"{selected.R:X2}{selected.G:X2}{selected.B:X2}{selected.A:X2}";
-                                else
-                                    newColor = $"{selected.R:X2}{selected.G:X2}{selected.B:X2}";
-                            }
+                                newColor = ColorUtils.ColorToHex(selected);
                             // First update the plugin's value.
                             Plugin.UpdateLastColor(newColor);
                             Rainmeter.API api = new Rainmeter.API(gRainmeter);

@@ -84,6 +84,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.cs" />
+    <Compile Include="ColorUtils.cs" />
     <Compile Include="MagnifierForm.cs">
       <SubType>Form</SubType>
     </Compile>
