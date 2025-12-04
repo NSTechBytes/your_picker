@@ -91,8 +91,30 @@ namespace YourPicker
         {
             // Get current mouse position.
             Point pos = Cursor.Position;
-            // Position the magnifier slightly offset from the pointer.
-            this.Location = new Point(pos.X + 20, pos.Y + 20);
+            
+            // Get the screen containing the cursor.
+            Screen currentScreen = Screen.FromPoint(pos);
+            Rectangle screenBounds = currentScreen.Bounds;
+            
+            // Calculate desired position with offset from the pointer.
+            int desiredX = pos.X + 20;
+            int desiredY = pos.Y + 20;
+            
+            // Ensure the magnifier stays within screen boundaries.
+            // Clamp X position.
+            if (desiredX + squareSize > screenBounds.Right)
+                desiredX = screenBounds.Right - squareSize;
+            if (desiredX < screenBounds.Left)
+                desiredX = screenBounds.Left;
+            
+            // Clamp Y position.
+            if (desiredY + squareSize > screenBounds.Bottom)
+                desiredY = screenBounds.Bottom - squareSize;
+            if (desiredY < screenBounds.Top)
+                desiredY = screenBounds.Top;
+            
+            // Position the magnifier.
+            this.Location = new Point(desiredX, desiredY);
 
             // Force this window to the topmost position.
             SetWindowPos(this.Handle, HWND_TOPMOST, 0, 0, 0, 0,
