@@ -198,6 +198,17 @@ namespace YourPicker
         }
     }
 
+    // Double buffered panel to prevent flickering
+    public class DoubleBufferedPanel : Panel
+    {
+        public DoubleBufferedPanel()
+        {
+            this.DoubleBuffered = true;
+            this.SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer, true);
+            this.UpdateStyles();
+        }
+    }
+
     /// <summary>
     /// Modern color picker form with enhanced visual design
     /// </summary>
@@ -206,7 +217,7 @@ namespace YourPicker
         private ColorWheelControl colorWheel;
         private ModernSlider brightnessBar;
         private ModernSlider alphaBar;
-        private Panel previewPanel;
+        private DoubleBufferedPanel previewPanel;
         private Label hexLabel;
         private Label rgbLabel;
         private Button hexCopyButton;
@@ -227,6 +238,11 @@ namespace YourPicker
         private bool isUpdatingSliders = false;
         public Color SelectedColor { get; private set; }
 
+        // Dragging fields
+        private bool dragging = false;
+        private Point dragCursorPoint;
+        private Point dragFormPoint;
+
         public ModernColorPickerForm(bool darkMode)
         {
             this.darkMode = darkMode;
@@ -238,7 +254,8 @@ namespace YourPicker
 
         private void InitializeForm()
         {
-            this.FormBorderStyle = FormBorderStyle.FixedDialog;
+            this.FormBorderStyle = FormBorderStyle.None;
+            this.ShowInTaskbar = false;
             this.MaximizeBox = false;
             this.MinimizeBox = false;
             this.StartPosition = FormStartPosition.CenterScreen;
@@ -257,6 +274,26 @@ namespace YourPicker
             {
                 this.BackColor = ColorTranslator.FromHtml("#f6f8fa");
                 this.ForeColor = ColorTranslator.FromHtml("#24292f");
+            }
+
+            // Dragging logic
+            this.MouseDown += (s, e) => { dragging = true; dragCursorPoint = Cursor.Position; dragFormPoint = this.Location; };
+            this.MouseMove += (s, e) => { 
+                if (dragging) { 
+                    Point dif = Point.Subtract(Cursor.Position, new Size(dragCursorPoint)); 
+                    this.Location = Point.Add(dragFormPoint, new Size(dif)); 
+                } 
+            };
+            this.MouseUp += (s, e) => { dragging = false; };
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            base.OnPaint(e);
+            // Draw a subtle border since we have no window frame
+            using (var pen = new Pen(darkMode ? ColorTranslator.FromHtml("#30363d") : ColorTranslator.FromHtml("#d0d7de"), 1))
+            {
+                e.Graphics.DrawRectangle(pen, 0, 0, this.Width - 1, this.Height - 1);
             }
         }
 
@@ -304,7 +341,7 @@ namespace YourPicker
             this.Controls.Add(alphaBar);
 
             // Preview panel with rounded corners
-            previewPanel = new Panel { Location = new Point(375, 15), Size = new Size(90, 200) };
+            previewPanel = new DoubleBufferedPanel { Location = new Point(375, 15), Size = new Size(90, 200) };
             previewPanel.Paint += PreviewPanel_Paint;
             this.Controls.Add(previewPanel);
 
