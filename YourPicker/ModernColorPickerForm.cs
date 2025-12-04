@@ -16,8 +16,8 @@ namespace YourPicker
         private Panel previewPanel;
         private Label hexLabel;
         private Label rgbLabel;
-        private Label hexCopyLabel;
-        private Label rgbCopyLabel;
+        private Button hexCopyButton;
+        private Button rgbCopyButton;
         private Button desktopPickButton;
         private Button okButton;
         private Button cancelButton;
@@ -126,9 +126,9 @@ namespace YourPicker
             if (darkMode) hexLabel.ForeColor = ColorTranslator.FromHtml("#c9d1d9");
             this.Controls.Add(hexLabel);
             
-            hexCopyLabel = CreateCopyButton(new Point(290, 230));
-            hexCopyLabel.Click += HexCopyLabel_Click;
-            this.Controls.Add(hexCopyLabel);
+            hexCopyButton = CreateCopyButton(new Point(290, 228));
+            hexCopyButton.Click += HexCopyLabel_Click;
+            this.Controls.Add(hexCopyButton);
 
             // RGB label and copy button
             rgbLabel = new Label 
@@ -141,9 +141,9 @@ namespace YourPicker
             if (darkMode) rgbLabel.ForeColor = ColorTranslator.FromHtml("#c9d1d9");
             this.Controls.Add(rgbLabel);
             
-            rgbCopyLabel = CreateCopyButton(new Point(290, 260));
-            rgbCopyLabel.Click += RgbCopyLabel_Click;
-            this.Controls.Add(rgbCopyLabel);
+            rgbCopyButton = CreateCopyButton(new Point(290, 258));
+            rgbCopyButton.Click += RgbCopyLabel_Click;
+            this.Controls.Add(rgbCopyButton);
 
             // RGB Group
             CreateRGBGroup();
@@ -398,20 +398,32 @@ namespace YourPicker
 
 
 
-        private Label CreateCopyButton(Point location)
+        private Button CreateCopyButton(Point location)
         {
-            var label = new Label
+            var button = new Button
             {
-                Text = "📋",
+                Text = "Copy",
                 Location = location,
-                AutoSize = true,
+                Size = new Size(55, 26),
                 Cursor = Cursors.Hand,
-                Font = new Font("Segoe UI Emoji", 14)
+                Font = new Font("Segoe UI", 8F),
+                FlatStyle = FlatStyle.Flat
             };
-            if (darkMode) label.ForeColor = ColorTranslator.FromHtml("#c9d1d9");
-            label.MouseEnter += (s, e) => label.Font = new Font("Segoe UI Emoji", 16);
-            label.MouseLeave += (s, e) => label.Font = new Font("Segoe UI Emoji", 14);
-            return label;
+            
+            if (darkMode)
+            {
+                button.BackColor = ColorTranslator.FromHtml("#21262d");
+                button.ForeColor = ColorTranslator.FromHtml("#c9d1d9");
+                button.FlatAppearance.BorderColor = ColorTranslator.FromHtml("#30363d");
+            }
+            else
+            {
+                button.BackColor = ColorTranslator.FromHtml("#f6f8fa");
+                button.ForeColor = ColorTranslator.FromHtml("#24292f");
+                button.FlatAppearance.BorderColor = ColorTranslator.FromHtml("#d0d7de");
+            }
+            
+            return button;
         }
 
         private void PreviewPanel_Paint(object sender, PaintEventArgs e)
