@@ -243,6 +243,9 @@ namespace YourPicker
         private Point dragCursorPoint;
         private Point dragFormPoint;
 
+        // Rounded corners
+        private int cornerRadius = 15;
+
         public ModernColorPickerForm(bool darkMode)
         {
             this.darkMode = darkMode;
@@ -287,13 +290,41 @@ namespace YourPicker
             this.MouseUp += (s, e) => { dragging = false; };
         }
 
+        protected override void OnLoad(EventArgs e)
+        {
+            base.OnLoad(e);
+            // Set the form region to have rounded corners
+            this.Region = CreateRoundedRegion(0, 0, this.Width, this.Height, cornerRadius);
+        }
+
+        private Region CreateRoundedRegion(int x, int y, int width, int height, int radius)
+        {
+            GraphicsPath path = new GraphicsPath();
+            path.StartFigure();
+            path.AddArc(x, y, radius * 2, radius * 2, 180, 90);
+            path.AddArc(x + width - radius * 2, y, radius * 2, radius * 2, 270, 90);
+            path.AddArc(x + width - radius * 2, y + height - radius * 2, radius * 2, radius * 2, 0, 90);
+            path.AddArc(x, y + height - radius * 2, radius * 2, radius * 2, 90, 90);
+            path.CloseFigure();
+            return new Region(path);
+        }
+
         protected override void OnPaint(PaintEventArgs e)
         {
             base.OnPaint(e);
-            // Draw a subtle border since we have no window frame
-            using (var pen = new Pen(darkMode ? ColorTranslator.FromHtml("#30363d") : ColorTranslator.FromHtml("#d0d7de"), 1))
+            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+            
+            // Draw a subtle rounded border
+            using (var pen = new Pen(darkMode ? ColorTranslator.FromHtml("#30363d") : ColorTranslator.FromHtml("#d0d7de"), 2))
             {
-                e.Graphics.DrawRectangle(pen, 0, 0, this.Width - 1, this.Height - 1);
+                GraphicsPath borderPath = new GraphicsPath();
+                int offset = 1;
+                borderPath.AddArc(offset, offset, cornerRadius * 2, cornerRadius * 2, 180, 90);
+                borderPath.AddArc(this.Width - cornerRadius * 2 - offset, offset, cornerRadius * 2, cornerRadius * 2, 270, 90);
+                borderPath.AddArc(this.Width - cornerRadius * 2 - offset, this.Height - cornerRadius * 2 - offset, cornerRadius * 2, cornerRadius * 2, 0, 90);
+                borderPath.AddArc(offset, this.Height - cornerRadius * 2 - offset, cornerRadius * 2, cornerRadius * 2, 90, 90);
+                borderPath.CloseFigure();
+                e.Graphics.DrawPath(pen, borderPath);
             }
         }
 
