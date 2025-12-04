@@ -60,8 +60,8 @@ namespace YourPicker
             {
                 System.Threading.Thread t = new System.Threading.Thread(() =>
                 {
-                    // Launch the full color picker GUI.
-                    ColorPickerForm picker = new ColorPickerForm(gDarkMode);
+                    // Launch the modern color picker GUI.
+                    ModernColorPickerForm picker = new ModernColorPickerForm(gDarkMode);
                     Application.Run(picker);
                     if (picker.DialogResult == DialogResult.OK)
                     {
