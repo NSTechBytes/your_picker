@@ -1,6 +1,6 @@
 ﻿{
     "skinDir":  ".\\Resources\\Skins",
-    "version":  "0.0.6",
+    "version":  "1.6.0",
     "minimumVersion":  "4.5",
     "author":  "nstechbytes",
     "variableFiles":  "",
@@ -9,13 +9,13 @@
                     {
                         "x64":  ".\\dist\\x64",
                         "x32":  ".\\dist\\x32",
-                        "name":  "WebView2.dll"
+                        "name":  "YourPicker.dll"
                     }
                 ],
-    "name":  "WebView2",
+    "name":  "YourPicker",
     "loadType":  "Skin",
-    "load":  "WebView2\\Clock\\Clock.ini",
+    "load":  "YourPicker\\Main.ini",
     "headerImage":  ".\\Resources\\banner.bmp",
-    "configPrefix":  "WebView2",
-    "output":  ".\\dist\\WebView2_v0.0.6_Alpha6.rmskin"
+    "configPrefix":  "YourPicker",
+    "output":  ".\\dist\\YourPicker_v1.6.0.rmskin"
 }
